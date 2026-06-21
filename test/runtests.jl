@@ -459,6 +459,38 @@ end
         @test rep["todos"] == rep2["todos"]   # same anonymized "unmapped function" todo
     end
 
+    @testset "conversion_report/replay over many node kinds" begin
+        src = "function out = demo(a, b)\n" *
+            "  c = [a, -b; 1, 2];\n" *           # matrix + unary minus
+            "  d = {a, 'str'};\n" *              # cell + string
+            "  r = a:2:b;\n" *                   # range
+            "  p = (a + b)';\n" *                # parenthesis + postfix transpose
+            "  if a > 0\n    out = c(1, end);\n" *   # if + end + index
+            "  elseif a < 0\n    out = d{1};\n" *    # elseif + cell index
+            "  else\n    out = ~a;\n  end\n" *       # not-operator
+            "  while b > 0\n    b = b - 1;\n  end\n" *
+            "  for k = 1:3\n    out = out + k;\n  end\n" *
+            "  obj.field = a;\nend\n"             # field assign
+        rep = conversion_report(src)
+        @test haskey(rep, "reproducer") && !isempty(rep["reproducer"])
+        @test replay_report(rep) isa Dict
+    end
+
+    @testset "assorted constructs (coverage of lowering branches)" begin
+        @test occursin(".!", convert_matlab("y = ~x;\n"; wrap_script = false).julia)
+        @test occursin("true", convert_matlab("b = true;\n"; wrap_script = false).julia)
+        @test occursin("false", convert_matlab("b = false;\n"; wrap_script = false).julia)
+        @test occursin("255", convert_matlab("h = 0xFF;\n"; wrap_script = false).julia)     # hex literal
+        @test occursin("im", convert_matlab("z = 3i;\n"; wrap_script = false).julia)        # imaginary literal
+        bc = convert_matlab("for i = 1:3\n  if i == 2\n    continue;\n  end\n  if i == 3\n    break;\n  end\nend\n"; wrap_script = false).julia
+        @test occursin("continue", bc) && occursin("break", bc)
+        @test occursin("Dict()", convert_matlab("m = containers.Map();\n"; wrap_script = false).julia)
+        @test occursin("Dict(", convert_matlab("m = containers.Map('a', 1);\n"; wrap_script = false).julia)
+        @test occursin("Any", convert_matlab("c = {1, 2; 3, 4};\n"; wrap_script = false).julia)   # 2-row cell
+        @test occursin("elseif", convert_matlab("if x == 1\n  y = 1;\nelseif x == 2\n  y = 2;\nelse\n  y = 3;\nend\n"; wrap_script = false).julia)
+        @test convert_matlab("s.a.b = 1;\n"; wrap_script = false) isa ConvertResult       # nested field assign
+    end
+
     @testset "obj.property(i) indexes the property, not a method call" begin
         src = "classdef Box\n  properties\n    data\n  end\n  methods\n" *
             "    function obj = Box(d)\n      obj.data = d;\n    end\n" *
