@@ -287,6 +287,10 @@ function lower_range(ctx::Ctx, kids)
     return Expr(:call, :(:), parts...)
 end
 
+# A row-matrix literal `[i j]` used as a subscript is an index list; emit a Vector `[i, j]`
+# (Julia indexing wants a vector, not a 1×N matrix).
+_as_index(e) = (e isa Expr && e.head === :hcat) ? Expr(:vect, e.args...) : e
+
 function lower_call_or_index(ctx::Ctx, n::CSTNode)
     namenode = _field(n, :name)
     argsnode = _childkind(n, :arguments)
@@ -299,7 +303,7 @@ function lower_call_or_index(ctx::Ctx, n::CSTNode)
         return Expr(:call, name, args...)
     end
     if name in ctx.vars
-        return Expr(:ref, name, args...)              # array indexing (1-based in both)
+        return Expr(:ref, name, map(_as_index, args)...)   # array indexing (1-based in both)
     end
     b = lower_builtin(ctx, name, args)
     b !== nothing && return b
@@ -421,7 +425,7 @@ function lower_assignment(ctx::Ctx, n::CSTNode)
     elseif left.kind === :function_call
         name = _idsym(ctx, _field(left, :name))
         argsnode = _childkind(left, :arguments)
-        idx = argsnode === nothing ? Any[] : map(c -> lower_expr(ctx, c), _named(argsnode))
+        idx = argsnode === nothing ? Any[] : map(c -> _as_index(lower_expr(ctx, c)), _named(argsnode))
         return Expr(:(=), Expr(:ref, name, idx...), rhs)
     elseif left.kind === :field_expression
         return lower_field_assign(ctx, left, rhs)
