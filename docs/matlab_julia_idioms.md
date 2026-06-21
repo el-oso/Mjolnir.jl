@@ -90,7 +90,9 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `cell(n)` | `Array{Any}(undef, n, n)` |  |
 | 🟡 | `plot/stem/bar/scatter/xlabel/...` | `Plots.plot/sticks/bar/.../xlabel!/...` | Plots.jl; stateful subplot/figure/hold/legend semantics are best-effort (subplot/figure still pass through) |
 | 🟡 | `fminsearch/fminunc` | `Optim.minimizer(Optim.optimize(f, x0))` | Optim.jl (unconstrained); use JuMP/Convex/MathOptInterface for constrained (linprog/quadprog) — TODO |
-| 🟡 | `conv/conv2/filter/freqz/xcorr (DSP toolbox)` | `DSP.conv/DSP.filt/...` | DSP.jl; butter/fir filter-design APIs differ -> TODO |
+| ✅ | `conv/conv2/filter/freqz/xcorr (DSP toolbox)` | `DSP.conv/DSP.filt/...` | DSP.jl |
+| 🟡 | `butter(n,Wn)` | `DSP.digitalfilter(Lowpass(Wn), Butterworth(n))` | returns a filter object, not [b,a]; band/high types need manual work; fir1 still TODO |
+| 🟡 | `interp1/interp2` | `Interpolations.linear_interpolation(...).(xq)` | linear default, 'spline'/'cubic'->cubic_spline; interp2 grids must be coordinate vectors |
 | 🟡 | `tf/ss/step/bode/lsim/c2d/feedback/pole (Control toolbox)` | `ControlSystems.tf/ss/...` | ControlSystems.jl; pole->poles; step/bode return objects, not [y,t] |
 | ⬜ | `syms / symbolic math` | `—` | Symbolic Toolbox; would need Symbolics.jl |
 

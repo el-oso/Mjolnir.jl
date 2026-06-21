@@ -330,6 +330,12 @@ end
         rimg = convert_matlab("g = rgb2gray(im);\nq = imread('a.png');\n"; wrap_script = false)
         @test occursin("Images.Gray.(im)", rimg.julia) && occursin("Images.load(", rimg.julia) && (:Images in rimg.imports)
         @test occursin("process(obj)", convert_matlab("obj.process();\n"; wrap_script = false).julia)
+        # filter design + interpolation
+        rb = convert_matlab("h = butter(4, 0.2);\n"; wrap_script = false)
+        @test occursin("DSP.digitalfilter(DSP.Lowpass(0.2), DSP.Butterworth(4))", rb.julia)
+        ri = convert_matlab("yi = interp1(x, y, xq);\n"; wrap_script = false)
+        @test occursin("Interpolations.linear_interpolation(x, y)).(xq)", ri.julia) && (:Interpolations in ri.imports)
+        @test occursin("cubic_spline_interpolation", convert_matlab("yi = interp1(x, y, xq, 'spline');\n"; wrap_script = false).julia)
         # Julia reserved-word identifiers are sanitized (e.g. a variable named `const`)
         kw = convert_matlab("const = 5;\ny = const + 1;\n"; wrap_script = false).julia
         @test occursin("const_ = 5", kw) && occursin("const_ + 1", kw)

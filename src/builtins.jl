@@ -176,6 +176,34 @@ const SPECIAL = Dict{Symbol, Function}(
     # --- DSP toolbox -> DSP.jl ---
     :conv => _pkg(:DSP, :conv), :conv2 => _pkg(:DSP, :conv),
     :filter => _pkg(:DSP, :filt), :freqz => _pkg(:DSP, :freqz), :xcorr => _pkg(:DSP, :xcorr),
+    # butter(n, Wn) -> lowpass Butterworth filter object. NOTE: band/high types and the [b,a]
+    # coefficient output form need manual adjustment (DSP returns a filter, not [b,a]).
+    :butter => (ctx, a) -> begin
+        push!(ctx.imports, :DSP)
+        n = a[1]
+        wn = length(a) >= 2 ? a[2] : a[1]
+        Expr(
+            :call, Expr(:., :DSP, QuoteNode(:digitalfilter)),
+            Expr(:call, Expr(:., :DSP, QuoteNode(:Lowpass)), wn),
+            Expr(:call, Expr(:., :DSP, QuoteNode(:Butterworth)), n)
+        )
+    end,
+    # --- interpolation -> Interpolations.jl ---
+    :interp1 => (ctx, a) -> begin
+        push!(ctx.imports, :Interpolations)
+        meth = (length(a) >= 4 && a[4] isa AbstractString && a[4] in ("spline", "cubic", "pchip")) ?
+            :cubic_spline_interpolation : :linear_interpolation
+        Expr(:., Expr(:call, Expr(:., :Interpolations, QuoteNode(meth)), a[1], a[2]), Expr(:tuple, a[3]))
+    end,
+    :interp2 => (ctx, a) -> begin
+        push!(ctx.imports, :Interpolations)   # interp2(X,Y,Z,xq,yq); X,Y must be coordinate vectors
+        Expr(
+            :., Expr(
+                :call, Expr(:., :Interpolations, QuoteNode(:linear_interpolation)),
+                Expr(:tuple, a[1], a[2]), a[3]
+            ), Expr(:tuple, a[4], a[5])
+        )
+    end,
     :fft2 => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :fft, a...)),
     :ifft2 => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :ifft, a...)),
     # --- functional comparisons & type conversions ---
