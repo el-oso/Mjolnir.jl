@@ -139,6 +139,7 @@ const SPECIAL = Dict{Symbol, Function}(
     :trace => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :tr, a...)),  # renamed
     :det => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :det, a...)),
     :diag => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :diag, a...)),
+    :eig => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :eigvals, a...)),  # [V,D]=eig needs eigen
     :transpose => (ctx, a) -> Expr(:call, :transpose, a...),
     :kron => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :kron, a...)),
     # --- FFT (FFTW; names match MATLAB) ---
@@ -186,6 +187,10 @@ const SPECIAL = Dict{Symbol, Function}(
     :xlim => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("xlims!"), a...)),
     :ylim => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("ylims!"), a...)),
     :legend => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("plot!"), Expr(:kw, :legend, true))),
+    :contour => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :contour, a...)),
+    :surf => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :surface, a...)),
+    :mesh => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :surface, a...)),
+    :sgtitle => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("title!"), a...)),
     # --- optimization (Optim.jl for unconstrained; JuMP/Convex for constrained — see docs) ---
     :fminsearch => (ctx, a) -> (
         push!(ctx.imports, :Optim);

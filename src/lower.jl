@@ -231,8 +231,13 @@ function lower_expr(ctx::Ctx, n::CSTNode)
         return Expr(:., lower_expr(ctx, objnode), QuoteNode(Symbol(nodetext(ctx.cst, fldnode))))
     elseif k === :lambda                                 # @(x) expr  ->  x -> expr
         argsnode = _childkind(n, :arguments)
-        ps = argsnode === nothing ? Symbol[] : [_idsym(ctx, a) for a in _childrenkind(argsnode, :identifier)]
-        bodyexpr = lower_expr(ctx, _field(n, :expression))
+        idnodes = argsnode === nothing ? CSTNode[] : _childrenkind(argsnode, :identifier)
+        ps = [_idsym(ctx, a) for a in idnodes]
+        raw = Set(Symbol(nodetext(ctx.cst, a)) for a in idnodes)   # scope params as variables
+        added = setdiff(raw, ctx.vars)
+        union!(ctx.vars, added)
+        bodyexpr = lower_expr(ctx, _field(n, :expression))         # so `x(i)` inside indexes
+        setdiff!(ctx.vars, added)
         sig = length(ps) == 1 ? ps[1] : Expr(:tuple, ps...)
         return Expr(:->, sig, bodyexpr)
     elseif k === :handle_operator                        # @name  ->  name (function reference)
@@ -272,12 +277,9 @@ end
 
 function lower_string(ctx::Ctx, n::CSTNode)
     raw = nodetext(ctx.cst, n)
-    isempty(raw) && return ""
-    if startswith(raw, "'")
-        return replace(raw[2:(end - 1)], "''" => "'")
-    else
-        return replace(raw[2:(end - 1)], "\"\"" => "\"")
-    end
+    length(raw) < 2 && return ""
+    inner = chop(raw; head = 1, tail = 1)            # strip quotes (UTF-8 safe; e.g. 'ε')
+    return startswith(raw, "'") ? replace(inner, "''" => "'") : replace(inner, "\"\"" => "\"")
 end
 
 function lower_range(ctx::Ctx, kids)

@@ -324,6 +324,12 @@ end
         # plotting -> Plots.jl
         pl = convert_matlab("plot(x, y);\nxlabel('t');\n"; wrap_script = false)
         @test occursin("plot(x, y)", pl.julia) && occursin("xlabel!(\"t\")", pl.julia) && (:Plots in pl.imports)
+        # multibyte UTF-8 string literal (e.g. Greek) doesn't crash
+        @test occursin("\"αβ\"", convert_matlab("s = 'αβ';\n"; wrap_script = false).julia)
+        # lambda parameters are scoped: x(i) inside @(x) is indexing, not a call
+        lam = convert_matlab("f = @(x) x(1)^2 + x(2)^2;\n"; wrap_script = false).julia
+        @test occursin("x[1]", lam) && occursin("x[2]", lam)
+        @test occursin("eigvals(A)", convert_matlab("e = eig(A);\n"; wrap_script = false).julia)
     end
 
     @testset "loop -> comprehension (and refusal when cumulative)" begin

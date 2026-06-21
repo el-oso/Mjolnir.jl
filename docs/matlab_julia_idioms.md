@@ -105,6 +105,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `ismember(a,b)` | `in.(a, Ref(b))` |  |
 | ✅ | `tril/triu` | `tril/triu` | LinearAlgebra |
 | ✅ | `fft/ifft/fftshift/ifftshift` | `fft/ifft/fftshift/ifftshift` | FFTW; names match |
+| 🟡 | `eig(A)` | `eigvals(A)` | LinearAlgebra; [V,D]=eig needs eigen() |
 
 ## Strings, conversions & maps
 
@@ -131,7 +132,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | | MATLAB | Julia | Notes |
 |---|---|---|---|
 | ✅ | `preallocated index loop` | `comprehension  y = [rhs for i in r]` | recognized when body is y(i)=rhs, i the loop var, rhs independent of y |
-| ✅ | `@(x) expr  /  @name` | `x -> expr  /  name` | anonymous functions & function handles |
+| ✅ | `@(x) expr  /  @name` | `x -> expr  /  name` | anonymous functions; lambda params are scoped so x(i) inside is indexing |
 | 🟡 | `function-handle parameter f(x)` | `f(x) (kept a call, not f[x])` | heuristic: a param used only as a call-like callee; a read-only array param sized only by indexing may misclassify (loud error, not silent) |
 | 🟡 | `command syntax (clc, format …)` | `dropped (no Julia equivalent)` | recorded as a todo |
 | ✅ | `if/elseif/else/end` | `if/elseif/else/end` |  |
