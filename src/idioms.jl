@@ -131,6 +131,7 @@ const IDIOMS = Idiom[
     Idiom("Constructors & builtins", "butter(n,Wn)", "DSP.digitalfilter(Lowpass(Wn), Butterworth(n))", builtin = :butter, status = :partial, notes = "returns a filter object, not [b,a]; band/high types need manual work; fir1 still TODO"),
     Idiom("Constructors & builtins", "interp1/interp2", "Interpolations.linear_interpolation(...).(xq)", builtin = :interp1, status = :partial, notes = "linear default, 'spline'/'cubic'->cubic_spline; interp2 grids must be coordinate vectors"),
     Idiom("Constructors & builtins", "tf/ss/step/bode/lsim/c2d/feedback/pole (Control toolbox)", "ControlSystems.tf/ss/...", builtin = :tf, status = :partial, notes = "ControlSystems.jl; pole->poles; step/bode return objects, not [y,t]"),
+    Idiom("Constructors & builtins", "seqcomplement/seqrcomplement/nt2aa/randseq (Bioinformatics toolbox)", "BioSequences.complement/reverse_complement/translate/randdnaseq", builtin = :seqrcomplement, status = :partial, notes = "BioJulia; inputs must be BioSequences (wrap char strings, e.g. LongDNA{4}(s))"),
     Idiom("Constructors & builtins", "syms / symbolic math", "—", status = :todo, notes = "Symbolic Toolbox; would need Symbolics.jl"),
     Idiom("Literals & types", "... (line continuation)", "(transparent)", notes = "ignored, as in MATLAB"),
 

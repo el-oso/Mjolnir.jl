@@ -284,6 +284,12 @@ const SPECIAL = Dict{Symbol, Function}(
     :imrotate => _pkg(:ImageTransformations, :imrotate),
     :imfilter => _pkg(:ImageFiltering, :imfilter),
     :imagesc => _pkg(:Plots, :heatmap),
+    # --- Bioinformatics toolbox -> BioJulia (BioSequences.jl). Inputs are BioSequences, so a
+    # char-string arg needs wrapping (e.g. LongDNA{4}(s)) -> partial. ---
+    :seqcomplement => _pkg(:BioSequences, :complement),
+    :seqrcomplement => _pkg(:BioSequences, :reverse_complement),
+    :nt2aa => _pkg(:BioSequences, :translate),
+    :randseq => _pkg(:BioSequences, :randdnaseq),
     # --- Control System toolbox -> ControlSystems.jl (APIs differ in places -> partial) ---
     :tf => _pkg(:ControlSystems, :tf), :ss => _pkg(:ControlSystems, :ss),
     :step => _pkg(:ControlSystems, :step), :impulse => _pkg(:ControlSystems, :impulse),

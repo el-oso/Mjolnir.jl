@@ -372,6 +372,22 @@ end
         @test r isa ConvertResult && any(t -> occursin("unexpected arity", t), r.todos)
     end
 
+    @testset "bioinformatics: BioJulia maps + from-scratch NW alignment e2e" begin
+        @test occursin("BioSequences.reverse_complement", convert_matlab("y = seqrcomplement(s);\n"; wrap_script = false).julia)
+        @test occursin("BioSequences.translate", convert_matlab("y = nt2aa(s);\n"; wrap_script = false).julia)
+        nw = "function score = nw(a, b, mt, ms, gap)\n" *
+            "    n = length(a); m = length(b);\n    H = zeros(n+1, m+1);\n" *
+            "    for i = 1:n+1\n        H(i,1) = (i-1)*gap;\n    end\n" *
+            "    for j = 1:m+1\n        H(1,j) = (j-1)*gap;\n    end\n" *
+            "    for i = 2:n+1\n        for j = 2:m+1\n" *
+            "            if a(i-1) == b(j-1)\n                s = mt;\n            else\n                s = ms;\n            end\n" *
+            "            H(i,j) = max([H(i-1,j-1)+s, H(i-1,j)+gap, H(i,j-1)+gap]);\n        end\n    end\n" *
+            "    score = H(n+1, m+1);\nend\n"
+        mod = Module()
+        Base.include_string(mod, convert_matlab(nw).julia)
+        @test Base.invokelatest(getfield(mod, :nw), collect("GATTACA"), collect("GCATGCU"), 1, -1, -2) == -1
+    end
+
     @testset "empty blocks don't crash (if/for/while/try with no body)" begin
         for s in ("if x\nend\n", "for i = 1:n\nend\n", "while c\nend\n", "if x\nelse\nend\n", "try\nend\n")
             @test convert_matlab(s; wrap_script = false) isa ConvertResult
