@@ -601,6 +601,24 @@ end
     end
 end
 
+@testset "Mjolnir — Stage 4d: compiled MEX -> Unmex.jl binding" begin
+    mktempdir() do dir
+        src = joinpath(dir, "matlab")
+        mkpath(src)
+        write(joinpath(src, "plain.m"), "function y = plain(x)\n  y = x + 1;\nend\n")
+        write(joinpath(src, "fast_op.mexa64"), "dummy-mex-binary")    # only scaffolding is checked
+        out = joinpath(dir, "out")
+        mkpath(out)
+        pkgdir = convert_project(src, out; name = "MexPkg")
+        @test isfile(joinpath(pkgdir, "src", "fast_op.mexa64"))       # binary copied next to binding
+        binding = read(joinpath(pkgdir, "src", "fast_op.jl"), String)
+        @test occursin("import Unmex", binding)
+        @test occursin("Unmex.open_mex(joinpath(@__DIR__, \"fast_op.mexa64\"))", binding)
+        @test occursin("Unmex.call(_fast_op_mex", binding)
+        @test occursin("fast_op.jl", read(joinpath(pkgdir, "src", "MexPkg.jl"), String))
+    end
+end
+
 @testset "Mjolnir — Stage 5: gated LLM refinement" begin
     baseline = "function sq(x)\n    y = x ^ 2\n    return y\nend"
     probes = ["sq(2)", "sq(5)", "sq(1.5)"]
