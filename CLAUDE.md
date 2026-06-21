@@ -1,7 +1,7 @@
 # Mjolnir.jl — agent guide
 
 > **Name.** *Mjolnir* (Norse — Thor's hammer, the tool that forges and transforms); "Mj" = the
-> M of MATLAB + the J of Julia. **Slogan: "Hammering MATLAB into shape."** Pronounced roughly
+> M of MATLAB + the J of Julia. **Slogan: "Hammering MATLAB into a JL-shape."** Pronounced roughly
 > *MYOL-nir* / *MJÖL-nir* (the "j" is a "y" sound) — be aware it can trip up non-Norse speakers.
 > Fallback names if we ever rebrand (all encode M/ML + J/Ju): **Jumla** (Arabic "a whole"; spells
 > Ju+ML), **Manju**/**Manjushri** (wisdom-sword cutting confusion), **Maju** (Basque serpent of

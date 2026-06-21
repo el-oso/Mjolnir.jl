@@ -5,7 +5,7 @@ layout: home
 hero:
   name: "Mjolnir.jl"
   text: "MATLAB → idiomatic Julia"
-  tagline: Hammering MATLAB into shape.
+  tagline: Hammering MATLAB into a JL-shape.
   actions:
     - theme: brand
       text: Getting started

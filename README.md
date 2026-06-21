@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: Runic](https://img.shields.io/badge/code_style-Runic-000000.svg)](https://github.com/fredrikekre/Runic.jl)
 
-**Hammering MATLAB into shape.**
+**Hammering MATLAB into a JL-shape.**
 
 A source-level **MATLAB → idiomatic Julia** converter, written in Julia. It turns `.m`
 scripts, function files, `classdef` files, and whole project trees into idiomatic Julia
