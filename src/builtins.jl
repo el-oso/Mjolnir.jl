@@ -54,13 +54,17 @@ _dimsafe(f::Symbol, x) = Expr(
 Map a MATLAB function call `name(args...)` (args already lowered) to a Julia expression.
 Returns `nothing` if `name` is not a recognized builtin (caller emits a plain call).
 """
+# Base/stdlib functions whose MATLAB call maps unchanged — emit the call, no TODO.
+const BASE_OK = Set([:isempty, :ndims, :rethrow, :isreal, :circshift])
+
 function lower_builtin(ctx, name::Symbol, args)
     if haskey(ELEMENTWISE, name)
         return _bcast(ELEMENTWISE[name], args)
     end
     h = get(SPECIAL, name, nothing)
-    h === nothing && return nothing
-    return h(ctx, args)
+    h !== nothing && return h(ctx, args)
+    name in BASE_OK && return Expr(:call, name, args...)
+    return nothing
 end
 
 # `n` args -> square `(n, n)` for the 1-arg matrix constructors (MATLAB `zeros(n)` is n×n).
@@ -172,6 +176,40 @@ const SPECIAL = Dict{Symbol, Function}(
     # --- DSP toolbox -> DSP.jl ---
     :conv => _pkg(:DSP, :conv), :conv2 => _pkg(:DSP, :conv),
     :filter => _pkg(:DSP, :filt), :freqz => _pkg(:DSP, :freqz), :xcorr => _pkg(:DSP, :xcorr),
+    :fft2 => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :fft, a...)),
+    :ifft2 => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :ifft, a...)),
+    # --- functional comparisons & type conversions ---
+    :ge => (ctx, a) -> Expr(:call, :.>=, a...), :le => (ctx, a) -> Expr(:call, :.<=, a...),
+    :gt => (ctx, a) -> Expr(:call, :.>, a...), :lt => (ctx, a) -> Expr(:call, :.<, a...),
+    :eq => (ctx, a) -> Expr(:call, :.==, a...), :ne => (ctx, a) -> Expr(:call, :.!=, a...),
+    :double => (ctx, a) -> Expr(:., :Float64, Expr(:tuple, a...)),
+    :single => (ctx, a) -> Expr(:., :Float32, Expr(:tuple, a...)),
+    :logical => (ctx, a) -> Expr(:., :Bool, Expr(:tuple, a...)),
+    # uint8 saturates to [0,255] and rounds
+    :uint8 => (ctx, a) -> Expr(:., :round, Expr(:tuple, :UInt8, Expr(:., :clamp, Expr(:tuple, a[1], 0, 255)))),
+    :uint16 => (ctx, a) -> Expr(:., :round, Expr(:tuple, :UInt16, Expr(:., :clamp, Expr(:tuple, a[1], 0, 65535)))),
+    :atan2 => (ctx, a) -> _bcast(:atan, a),
+    :rot90 => (ctx, a) -> Expr(:call, :rotl90, a...),
+    :hex2dec => (ctx, a) -> Expr(:call, :parse, :Int, a[1], Expr(:kw, :base, 16)),
+    :diff => (ctx, a) -> length(a) == 1 ? _dimsafe(:diff, a[1]) : Expr(:call, :diff, a...),
+    :isprime => _pkg(:Primes, :isprime),
+    :meshgrid => (ctx, a) -> begin
+        x = a[1]
+        y = length(a) >= 2 ? a[2] : a[1]
+        co = Expr(:call, :Colon)
+        X = Expr(:call, :repeat, Expr(:call, :reshape, x, 1, co), Expr(:call, :length, y), 1)
+        Y = Expr(:call, :repeat, Expr(:call, :reshape, y, co, 1), 1, Expr(:call, :length, x))
+        Expr(:tuple, X, Y)
+    end,
+    # --- image processing -> Images.jl ecosystem ---
+    :imread => _pkg(:Images, :load),
+    :imwrite => (ctx, a) -> (push!(ctx.imports, :Images); Expr(:call, Expr(:., :Images, QuoteNode(:save)), a[2], a[1])),
+    :rgb2gray => (ctx, a) -> (push!(ctx.imports, :Images); Expr(:., Expr(:., :Images, QuoteNode(:Gray)), Expr(:tuple, a...))),
+    :im2double => (ctx, a) -> Expr(:., :Float64, Expr(:tuple, a...)),
+    :imresize => _pkg(:Images, :imresize),
+    :imrotate => _pkg(:ImageTransformations, :imrotate),
+    :imfilter => _pkg(:ImageFiltering, :imfilter),
+    :imagesc => _pkg(:Plots, :heatmap),
     # --- Control System toolbox -> ControlSystems.jl (APIs differ in places -> partial) ---
     :tf => _pkg(:ControlSystems, :tf), :ss => _pkg(:ControlSystems, :ss),
     :step => _pkg(:ControlSystems, :step), :impulse => _pkg(:ControlSystems, :impulse),

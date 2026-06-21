@@ -77,6 +77,13 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `warning(msg)` | `@warn msg` |  |
 | ✅ | `s.(f) (dynamic field)` | `getproperty(s, Symbol(f)) / merge(...)` | read + write |
 | 🟡 | `s(i).field (struct array)` | `s[i] = merge(s[i], (field=v,)) / s[i].field` | read works; build-from-scratch needs a preallocated Vector |
+| ✅ | `ge/le/gt/lt/eq/ne` | `.>= / .<= / .> / .< / .== / .!=` | functional comparison forms |
+| ✅ | `double/single/logical` | `Float64. / Float32. / Bool.` |  |
+| ✅ | `uint8/uint16` | `round.(UInt8, clamp.(x,0,255)) / ...` | saturating cast |
+| ✅ | `atan2/rot90/hex2dec/diff` | `atan / rotl90 / parse(Int,_,base=16) / diff` |  |
+| ✅ | `[X,Y]=meshgrid(x,y)` | `repeat(reshape(...)) tuple` |  |
+| ✅ | `fft2/ifft2` | `fft/ifft (FFTW)` |  |
+| 🟡 | `imread/imwrite/rgb2gray/im2double/imresize/imrotate/imfilter/imagesc` | `Images.jl ecosystem (Images/ImageFiltering/ImageTransformations/Plots)` | imwrite arg order swapped; imshow best-effort |
 | ✅ | `anything unmapped` | `name(args...) + todos entry` |  |
 | ✅ | `size(x)` | `size(x)` | tuple vs vector; indexing compatible |
 | ✅ | `error(msg)` | `error(msg)` |  |

@@ -322,6 +322,14 @@ end
         # Control toolbox -> ControlSystems.jl
         rcs = convert_matlab("s = tf(n, d);\np = pole(s);\n"; wrap_script = false)
         @test occursin("ControlSystems.tf(n, d)", rcs.julia) && occursin("ControlSystems.poles(s)", rcs.julia)
+        # conversions, comparisons, meshgrid, images, method-call statement
+        @test occursin(".>=", convert_matlab("b = ge(x, y);\n"; wrap_script = false).julia)
+        @test occursin("Float64.(im)", convert_matlab("d = double(im);\n"; wrap_script = false).julia)
+        @test occursin("round.(UInt8, clamp.(v, 0, 255))", convert_matlab("u = uint8(v);\n"; wrap_script = false).julia)
+        @test occursin("repeat(reshape(", convert_matlab("[X, Y] = meshgrid(a, b);\n"; wrap_script = false).julia)
+        rimg = convert_matlab("g = rgb2gray(im);\nq = imread('a.png');\n"; wrap_script = false)
+        @test occursin("Images.Gray.(im)", rimg.julia) && occursin("Images.load(", rimg.julia) && (:Images in rimg.imports)
+        @test occursin("process(obj)", convert_matlab("obj.process();\n"; wrap_script = false).julia)
         # Julia reserved-word identifiers are sanitized (e.g. a variable named `const`)
         kw = convert_matlab("const = 5;\ny = const + 1;\n"; wrap_script = false).julia
         @test occursin("const_ = 5", kw) && occursin("const_ + 1", kw)

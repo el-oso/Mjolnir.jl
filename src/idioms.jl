@@ -90,6 +90,13 @@ const IDIOMS = Idiom[
     Idiom("Constructors & builtins", "warning(msg)", "@warn msg", builtin = :warning),
     Idiom("Constructors & builtins", "s.(f) (dynamic field)", "getproperty(s, Symbol(f)) / merge(...)", notes = "read + write"),
     Idiom("Constructors & builtins", "s(i).field (struct array)", "s[i] = merge(s[i], (field=v,)) / s[i].field", status = :partial, notes = "read works; build-from-scratch needs a preallocated Vector"),
+    Idiom("Constructors & builtins", "ge/le/gt/lt/eq/ne", ".>= / .<= / .> / .< / .== / .!=", builtin = :ge, notes = "functional comparison forms"),
+    Idiom("Constructors & builtins", "double/single/logical", "Float64. / Float32. / Bool.", builtin = :double),
+    Idiom("Constructors & builtins", "uint8/uint16", "round.(UInt8, clamp.(x,0,255)) / ...", builtin = :uint8, notes = "saturating cast"),
+    Idiom("Constructors & builtins", "atan2/rot90/hex2dec/diff", "atan / rotl90 / parse(Int,_,base=16) / diff", builtin = :rot90),
+    Idiom("Constructors & builtins", "[X,Y]=meshgrid(x,y)", "repeat(reshape(...)) tuple", builtin = :meshgrid),
+    Idiom("Constructors & builtins", "fft2/ifft2", "fft/ifft (FFTW)", builtin = :fft2),
+    Idiom("Constructors & builtins", "imread/imwrite/rgb2gray/im2double/imresize/imrotate/imfilter/imagesc", "Images.jl ecosystem (Images/ImageFiltering/ImageTransformations/Plots)", builtin = :imread, status = :partial, notes = "imwrite arg order swapped; imshow best-effort"),
     Idiom("Constructors & builtins", "anything unmapped", "name(args...) + todos entry"),
 
     # --- Linear algebra & arrays ---

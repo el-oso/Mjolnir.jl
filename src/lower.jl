@@ -369,6 +369,8 @@ function lower_stmt(ctx::Ctx, n::CSTNode)
         return lower_assignment(ctx, n)
     elseif k === :function_call
         return lower_expr(ctx, n)
+    elseif k === :field_expression                       # method-call / field statement: obj.m(x);
+        return lower_expr(ctx, n)
     elseif k === :if_statement
         return lower_if(ctx, n)
     elseif k === :for_statement
