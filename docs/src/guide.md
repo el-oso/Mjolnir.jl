@@ -1,17 +1,9 @@
 # How it works
 
-Mjolnir is an IR pipeline. Each stage is one file in `src/`:
+Mjolnir is an IR pipeline — each stage is one file in `src/` (`parse.jl`, `lower.jl`,
+`idiomatic.jl`, `emit.jl`, `assemble.jl`, with an optional gated `llm.jl`):
 
-![Mjolnir pipeline: .m source → parse (tree-sitter FFI → MatlabCST) → lower (CST → Julia Expr) → idiomatic (run_semantic + run_idiomatic) → emit (JuliaSyntax validity gate) → assemble (.m tree → Julia package), with an optional, gated LLM refinement step that is kept only if behaviorally equivalent.](assets/pipeline.svg)
-
-```
-.m source ─▶ parse.jl      (tree-sitter FFI → MatlabCST)
-          ─▶ lower.jl      (CST → Julia Expr; scope-resolves call-vs-index; uses builtins.jl)
-          ─▶ idiomatic.jl  run_semantic (always: shape-aware correctness) then
-                           run_idiomatic (de-broadcast / de-colon / let-wrap / comprehensions)
-          ─▶ emit.jl       (Expr → source; JuliaSyntax validity gate; ConvertResult)
-          ─▶ assemble.jl   (convert_project: .m tree → package, +packages → submodules)
-```
+![Mjolnir pipeline: .m source → parse (tree-sitter FFI → MatlabCST) → lower (CST → Julia Expr) → idiomatic (run_semantic + run_idiomatic) → emit (JuliaSyntax validity gate) → assemble (.m tree → Julia package), with an optional, gated LLM refinement step kept only if behaviorally equivalent.](assets/pipeline.svg)
 
 ## Why MATLAB → Julia is tractable
 

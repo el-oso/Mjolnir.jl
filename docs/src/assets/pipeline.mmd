@@ -1,15 +1,12 @@
 %% Source for assets/pipeline.svg. Regenerate after edits with:
-%%   mmdc -i pipeline.mmd -o pipeline.svg -b transparent -p puppeteer.json
-%% where puppeteer.json is {"args":["--no-sandbox"]} on sandboxed CI.
+%%   mmdc -i pipeline.mmd -o pipeline.svg -b transparent -c pipeline.config.json -p puppeteer.json
+%% where puppeteer.json is {"args":["--no-sandbox"]} on sandboxed CI. The two stage chains are
+%% intentionally disconnected so dagre stacks them as two rows (subgraph `direction` is ignored by
+%% the CLI renderer); the top row flows into the bottom row (idiomatic -> emit).
 flowchart LR
-    A["<b>.m source</b><br/>scripts · functions · classdef · projects"]
-    A --> P["<b>parse</b><br/>tree-sitter FFI &rarr; MatlabCST"]
-    P --> L["<b>lower</b><br/>CST &rarr; Julia Expr<br/>(call-vs-index, builtins)"]
-    L --> I["<b>idiomatic</b><br/>run_semantic + run_idiomatic<br/>(de-broadcast, comprehensions)"]
-    I --> E["<b>emit</b><br/>Expr &rarr; source<br/>JuliaSyntax validity gate"]
-    E --> AS["<b>assemble</b><br/>.m tree &rarr; Julia package"]
-    AS --> O(["<b>idiomatic Julia</b><br/>loadable package"])
-    E -. "optional, gated" .-> G(["<b>LLM refine</b><br/>kept only if equivalent"])
+    A["<b>.m source</b><br/>scripts · functions<br/>classdef · projects"] --> P["<b>parse</b><br/>tree-sitter FFI<br/>&rarr; MatlabCST"] --> L["<b>lower</b><br/>CST &rarr; Julia Expr<br/>call-vs-index · builtins"] --> I["<b>idiomatic</b> &rarr;<br/>run_semantic +<br/>run_idiomatic"]
+    E["&rarr; <b>emit</b><br/>Expr &rarr; source<br/>JuliaSyntax gate"] --> AS["<b>assemble</b><br/>.m tree &rarr;<br/>Julia package"] --> O(["<b>idiomatic Julia</b><br/>loadable package"])
+    E -. "optional, gated" .-> G(["<b>LLM refine</b><br/>kept iff equivalent"])
     G -.-> AS
 
     style A fill:#e3f2fd,stroke:#1565c0,color:#0d2440

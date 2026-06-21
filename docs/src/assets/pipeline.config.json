@@ -1,0 +1,5 @@
+{
+  "theme": "default",
+  "themeVariables": { "fontSize": "30px" },
+  "flowchart": { "useMaxWidth": false, "htmlLabels": true, "nodeSpacing": 45, "rankSpacing": 60 }
+}
