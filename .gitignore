@@ -12,7 +12,8 @@
 /docs/build/
 /docs/node_modules/
 /docs/package-lock.json
-/docs/src/idioms.md          # generated at build time from src/idioms.jl
+# docs/src/idioms.md is generated at build time from src/idioms.jl
+/docs/src/idioms.md
 /docs/src/.vitepress/cache/
 /docs/src/.vitepress/dist/
 
