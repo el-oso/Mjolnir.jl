@@ -41,13 +41,16 @@ function _render(stmts, ctx::Ctx; modulename)
     return String(take!(io))
 end
 
-function _validate(src::AbstractString)
+# Validity gate: parse the emitted source. Non-fatal — a problem records a todo and the
+# best-effort source is still returned (so one bad construct never aborts a whole file).
+function _validation_issue(src::AbstractString)
     try
         JuliaSyntax.parseall(Expr, src; filename = "mjolnir-emitted.jl")
+        return nothing
     catch e
-        error("Mjolnir: emitter produced invalid Julia:\n", src, "\n\n", e)
+        msg = sprint(showerror, e)
+        return "emitted Julia did not parse cleanly: " * first(split(msg, '\n'))
     end
-    return nothing
 end
 
 """
@@ -69,7 +72,8 @@ function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = t
     stmts = run_semantic(stmts)                       # always-on correctness fixups
     idiomatic && (stmts = run_idiomatic(stmts; wrap_script))
     out = _render(stmts, ctx; modulename)
-    _validate(out)
+    issue = _validation_issue(out)
+    issue === nothing || push!(ctx.todos, issue)
     return ConvertResult(out, sort!(collect(ctx.imports)), ctx.todos, cst.has_error)
 end
 

@@ -171,6 +171,30 @@ const SPECIAL = Dict{Symbol, Function}(
         Expr(:call, :any, Expr(:call, :.!=, a[1], 0), Expr(:kw, :dims, a[2])),
     :all => (ctx, a) -> length(a) == 1 ? Expr(:call, :all, Expr(:call, :.!=, a[1], 0)) :
         Expr(:call, :all, Expr(:call, :.!=, a[1], 0), Expr(:kw, :dims, a[2])),
+    # --- plotting (Plots.jl; best-effort — MATLAB's stateful figure/subplot/hold model differs) ---
+    :plot => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :plot, a...)),
+    :plot3 => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :plot, a...)),
+    :stem => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :plot, a..., Expr(:kw, :seriestype, QuoteNode(:sticks)))),
+    :bar => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :bar, a...)),
+    :scatter => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :scatter, a...)),
+    :hist => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :histogram, a...)),
+    :histogram => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, :histogram, a...)),
+    :xlabel => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("xlabel!"), a...)),
+    :ylabel => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("ylabel!"), a...)),
+    :zlabel => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("zlabel!"), a...)),
+    :title => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("title!"), a...)),
+    :xlim => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("xlims!"), a...)),
+    :ylim => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("ylims!"), a...)),
+    :legend => (ctx, a) -> (push!(ctx.imports, :Plots); Expr(:call, Symbol("plot!"), Expr(:kw, :legend, true))),
+    # --- optimization (Optim.jl for unconstrained; JuMP/Convex for constrained — see docs) ---
+    :fminsearch => (ctx, a) -> (
+        push!(ctx.imports, :Optim);
+        Expr(:call, Expr(:., :Optim, QuoteNode(:minimizer)), Expr(:call, Expr(:., :Optim, QuoteNode(:optimize)), a...))
+    ),
+    :fminunc => (ctx, a) -> (
+        push!(ctx.imports, :Optim);
+        Expr(:call, Expr(:., :Optim, QuoteNode(:minimizer)), Expr(:call, Expr(:., :Optim, QuoteNode(:optimize)), a...))
+    ),
     # --- statistics (Statistics stdlib) ---
     :mean => (ctx, a) -> (push!(ctx.imports, :Statistics); Expr(:call, :mean, a...)),
     :median => (ctx, a) -> (push!(ctx.imports, :Statistics); Expr(:call, :median, a...)),

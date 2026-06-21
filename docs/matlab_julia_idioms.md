@@ -79,7 +79,8 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `size(x)` | `size(x)` | tuple vs vector; indexing compatible |
 | ✅ | `error(msg)` | `error(msg)` |  |
 | ✅ | `cell(n)` | `Array{Any}(undef, n, n)` |  |
-| ⬜ | `plot/stem/subplot/xlabel/... (plotting)` | `—` | passed through as calls + todo; mapping to a Julia plot backend is out of scope |
+| 🟡 | `plot/stem/bar/scatter/xlabel/...` | `Plots.plot/sticks/bar/.../xlabel!/...` | Plots.jl; stateful subplot/figure/hold/legend semantics are best-effort (subplot/figure still pass through) |
+| 🟡 | `fminsearch/fminunc` | `Optim.minimizer(Optim.optimize(f, x0))` | Optim.jl (unconstrained); use JuMP/Convex/MathOptInterface for constrained (linprog/quadprog) — TODO |
 | ⬜ | `conv/filter/butter/freqz (DSP toolbox)` | `—` | map to DSP.jl in a future batch |
 | ⬜ | `syms / symbolic math` | `—` | Symbolic Toolbox; would need Symbolics.jl |
 

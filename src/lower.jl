@@ -42,7 +42,19 @@ function _optoken(ctx::Ctx, n::CSTNode)
     error("Mjolnir: no operator token in $(n.kind)")
 end
 
-_idsym(ctx::Ctx, n::CSTNode) = Symbol(nodetext(ctx.cst, n))
+# MATLAB identifiers that are Julia reserved words must be renamed on emit (e.g. a variable
+# `const` -> `const_`). Applied consistently to every name -> Julia-symbol conversion.
+const _JULIA_RESERVED = Set(
+    [
+        :baremodule, :begin, :break, :catch, :const, :continue, :do, :else, :elseif, :end,
+        :export, :false, :finally, :for, :function, :global, :if, :import, :let, :local,
+        :macro, :module, :quote, :return, :struct, :true, :try, :using, :while,
+        :in, :isa, :where, :abstract, :mutable, :primitive, :type, :ccall,
+    ]
+)
+_sanitize(s::Symbol) = s in _JULIA_RESERVED ? Symbol(s, "_") : s
+
+_idsym(ctx::Ctx, n::CSTNode) = _sanitize(Symbol(nodetext(ctx.cst, n)))
 
 # ---------------------------------------------------------------------------------------
 # Scope pre-pass: which names are variables (so `x(i)` -> index, not call)
@@ -242,7 +254,7 @@ function lower_ident(ctx::Ctx, n::CSTNode)
     if !(s in ctx.vars) && haskey(IDENT_MAP, s)
         return IDENT_MAP[s]
     end
-    return s
+    return _sanitize(s)
 end
 
 function lower_number(t::AbstractString)

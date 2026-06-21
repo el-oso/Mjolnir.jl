@@ -107,6 +107,9 @@ Parse a MATLAB source string into a concrete syntax tree.
 """
 function parse_matlab(src::AbstractString)
     s = String(src)
+    # A file without a trailing newline makes the grammar insert a MISSING statement separator
+    # at EOF (spurious has_error). Append one — harmless and matches how MATLAB treats EOF.
+    (isempty(s) || endswith(s, '\n')) || (s = s * "\n")
     parser = ccall((:ts_parser_new, LIBTREESITTER), Ptr{Cvoid}, ())
     return try
         ok = ccall(

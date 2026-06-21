@@ -316,6 +316,14 @@ end
         # fft -> FFTW
         rfft = convert_matlab("y = fft(x);\n"; wrap_script = false)
         @test occursin("fft(x)", rfft.julia) && (:FFTW in rfft.imports)
+        # Julia reserved-word identifiers are sanitized (e.g. a variable named `const`)
+        kw = convert_matlab("const = 5;\ny = const + 1;\n"; wrap_script = false).julia
+        @test occursin("const_ = 5", kw) && occursin("const_ + 1", kw)
+        # files without a trailing newline still parse cleanly (no spurious has_error)
+        @test !convert_matlab("x = 1").has_error
+        # plotting -> Plots.jl
+        pl = convert_matlab("plot(x, y);\nxlabel('t');\n"; wrap_script = false)
+        @test occursin("plot(x, y)", pl.julia) && occursin("xlabel!(\"t\")", pl.julia) && (:Plots in pl.imports)
     end
 
     @testset "loop -> comprehension (and refusal when cumulative)" begin
