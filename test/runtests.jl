@@ -440,6 +440,20 @@ end
         @test getfield(mod, :counter) == 3
     end
 
+    @testset "conversion_report is IP-free and resilient" begin
+        src = "function r = secretAlgo(inData, thr)\n  m = proprietaryHelper(inData);\n  r = m * thr + 42;\n  disp('topsecret');\nend\n"
+        js = conversion_report_json(src)
+        for name in ("secretAlgo", "inData", "thr", "proprietaryHelper", "topsecret")
+            @test !occursin(name, js)                       # no user names or string contents leak
+        end
+        rep = conversion_report(src)
+        @test rep["summary"]["placeholders"] >= 4
+        @test occursin("function_definition", rep["skeleton"]) && occursin("id1", rep["skeleton"])
+        @test any(t -> occursin("unmapped", t), rep["todos"])   # the proprietary call, anonymized
+        # resilient: problematic input still produces a report (does not throw out)
+        @test conversion_report("a = 1;\nb = mystery(a);\nc = a + 1;\n") isa Dict
+    end
+
     @testset "obj.property(i) indexes the property, not a method call" begin
         src = "classdef Box\n  properties\n    data\n  end\n  methods\n" *
             "    function obj = Box(d)\n      obj.data = d;\n    end\n" *

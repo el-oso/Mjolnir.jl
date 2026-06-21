@@ -1,0 +1,140 @@
+# IP-free conversion reports.
+#
+# When a conversion hits problems, `conversion_report` dumps everything needed to fix Mjolnir
+# WITHOUT the failing source: the CST is rendered as an s-expression of node *kinds* (grammar
+# vocabulary, not IP), user variable/function names become `idN` placeholders, string and number
+# literals are stripped, and free text (exception messages, todos) is scrubbed of user names.
+# MATLAB keywords/builtins are kept verbatim — they are MATLAB's public API, not the user's IP.
+
+# MATLAB names Mjolnir already recognizes (kept verbatim; everything else is anonymized).
+_known_names() = union(Set(keys(ELEMENTWISE)), Set(keys(SPECIAL)), Set(keys(IDENT_MAP)), BASE_OK)
+
+mutable struct _Anon
+    map::Dict{String, String}
+    n::Int
+end
+_Anon() = _Anon(Dict{String, String}(), 0)
+
+_ph!(a::_Anon, name::AbstractString) = get!(a.map, name) do
+    a.n += 1
+    return "id$(a.n)"
+end
+
+# Render a node as an IP-free s-expression. Identifiers -> verbatim (if a known builtin/keyword)
+# or `idN`; strings/numbers stripped; comments/continuations dropped.
+function _anon_sexpr(io::IO, cst::MatlabCST, n::CSTNode, a::_Anon, known)
+    k = n.kind
+    if k === :comment || k === :line_continuation
+        return
+    elseif k === :identifier
+        t = nodetext(cst, n)
+        print(io, Symbol(t) in known ? t : _ph!(a, t))
+        return
+    elseif k === :string || k === :string_content
+        print(io, "\"<str>\"")
+        return
+    elseif k === :number
+        print(io, "<num>")
+        return
+    end
+    kids = filter(c -> c.named && c.kind !== :line_continuation && c.kind !== :comment, n.children)
+    if isempty(kids)
+        print(io, "(", k, ")")
+    else
+        print(io, "(", k)
+        for c in kids
+            print(io, " ")
+            _anon_sexpr(io, cst, c, a, known)
+        end
+        print(io, ")")
+    end
+    return
+end
+function _anon_sexpr(cst::MatlabCST, n::CSTNode, a::_Anon, known)
+    io = IOBuffer()
+    _anon_sexpr(io, cst, n, a, known)
+    return String(take!(io))
+end
+
+# Replace any anonymized user name with its placeholder in free text (longest first, so a name
+# that is a prefix of another doesn't partially match).
+function _scrub(text::AbstractString, a::_Anon)
+    out = String(text)
+    for name in sort(collect(keys(a.map)); by = length, rev = true)
+        out = replace(out, Regex("\\b\\Q" * name * "\\E\\b") => a.map[name])   # whole-word only
+    end
+    return out
+end
+
+"""
+    conversion_report(src::AbstractString) -> Dict
+
+Build an **IP-free** report of everything that went wrong converting MATLAB `src`, suitable for
+filing a Mjolnir bug without sharing the source. Conversion is resilient (it does not stop at the
+first error), so one report captures every problem.
+
+The report anonymizes user variable/function names to `idN` placeholders, strips string and number
+literals, drops comments, and scrubs the same names out of exception messages and todos. MATLAB
+keywords and recognized builtins are kept verbatim (they are MATLAB's public API). Keys:
+
+- `summary` — counts (statements, parse error, lowering exceptions, todos, placeholders)
+- `problems` — parse errors and caught lowering exceptions, each with an anonymized `context`
+- `todos` — scrubbed conversion todos (unhandled nodes, unmapped calls, …)
+- `skeleton` — the whole unit as an anonymized node-kind s-expression
+
+See also [`conversion_report_json`](@ref).
+"""
+function conversion_report(src::AbstractString)
+    cst = parse_matlab(src)
+    ctx = Ctx(
+        cst, collect_vars(cst), String[], Set{Symbol}(), collect_classes(cst),
+        Ref(false), Set{Symbol}(), collect_callables(cst), Set{Symbol}(), Any[]
+    )
+    cst.has_error && push!(ctx.todos, "parse error: input contains MATLAB the grammar could not parse")
+    lower_unit(ctx)                       # resilient: fills ctx.todos and ctx.errors, never throws out
+    known = _known_names()
+    a = _Anon()
+    skeleton = _anon_sexpr(cst, cst.root, a, known)    # also populates the placeholder map
+
+    problems = Any[]
+    for e in ctx.errors
+        push!(
+            problems, Dict(
+                "type" => "lowering_exception",
+                "node_kind" => string(e.kind),
+                "exception" => _scrub(e.exception, a),
+                "context" => _anon_sexpr(cst, e.node, a, known),
+            )
+        )
+    end
+    for er in findkind(cst, :ERROR)
+        push!(
+            problems, Dict(
+                "type" => "parse_error", "node_kind" => "ERROR",
+                "context" => _anon_sexpr(cst, er, a, known),
+            )
+        )
+    end
+
+    return Dict(
+        "report_version" => 1,
+        "summary" => Dict(
+            "statements" => length(filter(c -> c.named && c.kind !== :comment, cst.root.children)),
+            "parse_has_error" => cst.has_error,
+            "lowering_exceptions" => length(ctx.errors),
+            "problems" => length(problems),
+            "todos" => length(ctx.todos),
+            "placeholders" => length(a.map),
+        ),
+        "problems" => problems,
+        "todos" => [_scrub(t, a) for t in ctx.todos],
+        "skeleton" => skeleton,
+    )
+end
+
+"""
+    conversion_report_json(src::AbstractString) -> String
+
+[`conversion_report`](@ref) serialized to JSON (IP-free) for sharing.
+"""
+conversion_report_json(src::AbstractString) = JSON.json(conversion_report(src))

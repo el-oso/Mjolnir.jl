@@ -47,6 +47,13 @@ write_idioms
 idiom_builtin_gaps
 ```
 
+## Diagnostics & bug reports
+
+```@docs
+conversion_report
+conversion_report_json
+```
+
 ## LLM refinement
 
 ```@docs

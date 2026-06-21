@@ -15,6 +15,7 @@ struct Ctx
     structs_seen::Set{Symbol}        # struct vars already initialized (incremental field build)
     callables::Set{Symbol}           # vars assigned a function handle -> `f(x)` stays a call
     cur_props::Set{Symbol}           # property names of the class whose methods we're lowering
+    errors::Vector{Any}              # caught lowering exceptions: (kind, exception, node) for reports
 end
 
 # ---------------------------------------------------------------------------------------
@@ -463,11 +464,25 @@ _append_stmt!(stmts, ::Nothing) = stmts
 _append_stmt!(stmts, s) = (push!(stmts, s); stmts)
 _append_stmt!(stmts, ss::Vector) = (append!(stmts, ss); stmts)
 
+# Lower one statement, but never let an exception abort the whole conversion: record it (for the
+# IP-free conversion_report) and continue, so we convert as much as possible and gather every
+# problem in a single pass.
+function _safe_append!(ctx::Ctx, stmts, c::CSTNode)
+    try
+        _append_stmt!(stmts, lower_stmt(ctx, c))
+    catch e
+        e isa InterruptException && rethrow()
+        push!(ctx.errors, (kind = c.kind, exception = sprint(showerror, e), node = c))
+        push!(ctx.todos, "lowering error on `$(c.kind)`: $(typeof(e)) (skipped; see conversion_report)")
+    end
+    return stmts
+end
+
 lower_block(::Ctx, ::Nothing) = Expr(:block)   # empty body (e.g. `if x\nend`)
 function lower_block(ctx::Ctx, blk::CSTNode)
     stmts = Any[]
     for c in _named(blk)
-        _append_stmt!(stmts, lower_stmt(ctx, c))
+        _safe_append!(ctx, stmts, c)
     end
     return Expr(:block, stmts...)
 end
@@ -908,7 +923,7 @@ end
 function lower_unit(ctx::Ctx)
     stmts = Any[]
     for c in _named(ctx.cst.root)
-        _append_stmt!(stmts, lower_stmt(ctx, c))
+        _safe_append!(ctx, stmts, c)
     end
     return stmts
 end

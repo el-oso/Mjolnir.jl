@@ -38,6 +38,16 @@ Julia (fresh module). Any new mapping must keep the oracle green — that is the
 "correct". Idiomatic rewrites are only kept if they survive it. A real-MATLAB oracle can be used
 for the final/pre-release gate (the cases Octave gets wrong: `string`, classdef, toolboxes).
 
+## Reporting bugs without sharing source
+
+If a conversion misbehaves on proprietary code, `conversion_report(src)` (or
+`conversion_report_json`) produces an **IP-free** diagnostic you can file without the source.
+Conversion is resilient — it does not stop at the first error, so one report captures every
+problem. The report renders the CST as an s-expression of node *kinds*, replaces user
+variable/function names with `idN` placeholders, strips string/number literals, and scrubs those
+names from messages and todos. MATLAB keywords and recognized builtins are kept verbatim (public
+API, not your IP), so the maintainer can reproduce and fix the issue from structure alone.
+
 ## Coverage
 
 Mjolnir has been shaken down against real open-source MATLAB across many domains — numerical
