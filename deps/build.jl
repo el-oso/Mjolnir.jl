@@ -31,8 +31,12 @@ function find_runtime()
     error(
         """
         Mjolnir: could not find the tree-sitter runtime (libtree-sitter).
-        Install it, e.g.:  apt install libtree-sitter0   (Debian/Ubuntu)
-                           brew install tree-sitter       (macOS)
+        The pinned grammar needs ABI 15 -> tree-sitter >= 0.21 (0.25 known good).
+        Install a recent runtime:
+          macOS:          brew install tree-sitter
+          from source:    git clone --depth 1 --branch v0.25.10 https://github.com/tree-sitter/tree-sitter
+                          make -C tree-sitter && sudo make -C tree-sitter install PREFIX=/usr/local && sudo ldconfig
+        NOTE: distro packages may be too old (Debian/Ubuntu `libtree-sitter0` is ABI 14 -> mismatch).
         """
     )
 end

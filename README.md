@@ -30,8 +30,13 @@ using Pkg
 Pkg.add(url = "https://github.com/el-oso/Mjolnir.jl")
 
 import Mjolnir
-include(joinpath(pkgdir(Mjolnir), "deps", "build.jl"))   # compiles the MATLAB grammar (needs cc + git)
+include(joinpath(pkgdir(Mjolnir), "deps", "build.jl"))   # compiles the MATLAB grammar
 ```
+
+Requirements: a C compiler (`cc`/`gcc`), `git`, and the **tree-sitter runtime** — **≥ 0.21**
+(ABI 15; 0.25 known good). Distro packages are often too old (Debian/Ubuntu's `libtree-sitter0`
+is ABI 14 and will fail); build from source if needed. See the
+[install guide](https://el-oso.github.io/Mjolnir.jl/dev/getting_started) for details.
 
 [Octave](https://octave.org) on `PATH` is optional — only the differential-oracle tests use it
 (as an arm's-length subprocess; never linked, source never read).

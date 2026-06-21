@@ -1,3 +1,4 @@
+```@raw html
 ---
 layout: home
 
@@ -21,12 +22,16 @@ hero:
 
 features:
   - title: Idiomatic, not line-by-line
+    icon: 🔨
     details: Deterministic rewrite passes turn MATLAB into Julia that reads like Julia — broadcasting, comprehensions, multiple dispatch, structs over Dicts.
   - title: Scripts, functions, classes, projects
+    icon: 📦
     details: Converts .m scripts, function files, classdef OOP, and whole project trees into a loadable Julia package.
   - title: Correctness gated by an oracle
+    icon: ✅
     details: Every mapping is differentially tested against Octave (and optionally real MATLAB). Idiomatic rewrites are kept only if behavior is preserved.
 ---
+```
 
 # Mjolnir.jl
 
