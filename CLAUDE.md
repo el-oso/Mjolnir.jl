@@ -52,11 +52,12 @@ Public API: `convert_matlab(src; modulename, idiomatic=true, wrap_script=true)`,
 
 - **1-based + column-major are shared** with Julia — translate indices/storage as-is. This is
   why this is more tractable than MATLAB→Python.
-- **Row & column vector literals → Julia 1-D `Vector`** (design decision): `[1 2 3]` and `[1;2;3]`
-  both become `[1, 2, 3]`; only multi-row `[1 2; 3 4]` is a `Matrix`. This is idiomatic and makes
-  `sort`/`cumsum`/`length`/iteration Just Work, but **transpose (`[1 2 3]'`), row×column inner
-  products, and `size()` diverge** from MATLAB — accepted tradeoff. `fliplr` therefore expects a
-  matrix (a "row vector" is now 1-D → use `flip`/`reverse`).
+- **Vector literals are MATLAB-faithful** (design decision, revisited after real-code e2e showed
+  ~30% of functions break otherwise): `[1 2 3]` → `[1 2 3]` (1×N **Matrix**), `[1;2;3]` → `Vector`,
+  `[A b]`/`[A;b]` → `hcat`/`vcat` (concatenation). So `size(x,2)`, transpose (`'`), `x*y` inner
+  products, and augmented matrices all match MATLAB. Cost: `sort`/`cumsum`/`cumprod` need a `dims`
+  for ≥2-D, so they're emitted `ndims`-dispatched (`_dimsafe`): `f(x)` for a vector, `f(x; dims=
+  first-non-singleton)` for a 1×N row.
 - **`name(...)` is call-vs-index ambiguous.** Resolved by a scope pre-pass (`collect_vars`): if
   the name is a known variable → `x[i]` (index), else → call/builtin. Keep this pre-pass correct.
 - **Operators lower to broadcast for safety** (`+`→`.+`, `==`→`.==`, …) because MATLAB does

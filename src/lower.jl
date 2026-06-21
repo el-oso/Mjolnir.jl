@@ -345,9 +345,9 @@ function lower_matrix(ctx::Ctx, n::CSTNode)
     if length(rowelems) == 1
         e = rowelems[1]
         length(e) == 1 && return e[1]
-        # Scalar-literal row -> 1-D Vector (idiomatic); otherwise it's horizontal concatenation
-        # of arrays (e.g. an augmented matrix `[A b]`) -> hcat.
-        return all(x -> x isa Number, e) ? Expr(:vect, e...) : Expr(:hcat, e...)
+        # MATLAB single-row `[...]` is a 1×N matrix (and `[A b]` is horizontal concatenation) ->
+        # hcat, matching MATLAB shape/transpose/concat fidelity.
+        return Expr(:hcat, e...)
     elseif all(r -> length(r) == 1, rowelems)
         return Expr(:vcat, (r[1] for r in rowelems)...)
     else

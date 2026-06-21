@@ -35,6 +35,12 @@ _unescape_printf(s::AbstractString) =
 _unescape_printf(x) = x
 _printf_args(a) = isempty(a) ? a : Any[_unescape_printf(a[1]), a[2:end]...]
 
+# First non-singleton dimension of x, defaulting to 1 — matches MATLAB's default reduction dim.
+_fnsd(x) = Expr(:call, :something, Expr(:call, :findfirst, Expr(:call, :>, 1), Expr(:call, :size, x)), 1)
+# `f(x)` for a 1-D vector (no dims allowed), `f(x; dims=first-non-singleton)` for ≥2-D (e.g. 1×N).
+_dimsafe(f::Symbol, x) = Expr(:if, Expr(:call, :(==), Expr(:call, :ndims, x), 1),
+    Expr(:call, f, x), Expr(:call, f, x, Expr(:kw, :dims, _fnsd(x))))
+
 """
     lower_builtin(ctx, name, args) -> Expr
 
@@ -172,10 +178,12 @@ const SPECIAL = Dict{Symbol, Function}(
     :fliplr => (ctx, a) -> Expr(:call, :reverse, a[1], Expr(:kw, :dims, 2)),
     :flipud => (ctx, a) -> Expr(:call, :reverse, a[1], Expr(:kw, :dims, 1)),
     :flip => (ctx, a) -> Expr(:call, :reverse, a...),
-    :sort => (ctx, a) -> Expr(:call, :sort, a...),
+    # sort/cumsum/cumprod need a dims for ≥2-D; MATLAB acts along the first non-singleton dim.
+    # `_fnsd(x)` = something(findfirst(>(1), size(x)), 1) reproduces that for vectors & 1×N rows.
+    :sort => (ctx, a) -> length(a) == 1 ? _dimsafe(:sort, a[1]) : Expr(:call, :sort, a...),
     :unique => (ctx, a) -> Expr(:call, :sort, Expr(:call, :unique, a[1])),  # MATLAB unique is sorted
-    :cumsum => (ctx, a) -> Expr(:call, :cumsum, a...),
-    :cumprod => (ctx, a) -> Expr(:call, :cumprod, a...),
+    :cumsum => (ctx, a) -> length(a) == 1 ? _dimsafe(:cumsum, a[1]) : Expr(:call, :cumsum, a...),
+    :cumprod => (ctx, a) -> length(a) == 1 ? _dimsafe(:cumprod, a[1]) : Expr(:call, :cumprod, a...),
     # MATLAB any/all treat nonzero as true; Julia needs a Bool array -> use `x .!= 0`.
     :any => (ctx, a) -> length(a) == 1 ? Expr(:call, :any, Expr(:call, :.!=, a[1], 0)) :
         Expr(:call, :any, Expr(:call, :.!=, a[1], 0), Expr(:kw, :dims, a[2])),

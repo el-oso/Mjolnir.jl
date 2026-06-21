@@ -35,8 +35,10 @@ const _CATEGORY_ORDER = [
 const IDIOMS = Idiom[
     # --- Literals & types ---
     Idiom("Literals & types", "42 / 2.5 / 1e3", "42 / 2.5 / 1e3", notes = "integer literals stay Int"),
-    Idiom("Literals & types", "[1 2 3] / [1;2;3]", "[1, 2, 3] (1-D Vector)", status = :partial, notes = "MATLAB row & column vectors both -> Julia Vector; transpose, row×col inner product, and size() diverge"),
+    Idiom("Literals & types", "[1 2 3] (row)", "[1 2 3] (1×N Matrix)", notes = "MATLAB-faithful: size(x,2), transpose, x*y, and [A b] concatenation all work"),
+    Idiom("Literals & types", "[1;2;3] (column)", "[1, 2, 3] (Vector)"),
     Idiom("Literals & types", "[1 2; 3 4]", "[1 2; 3 4] (Matrix)"),
+    Idiom("Literals & types", "[A b] / [A; b]", "hcat / vcat (concatenation)"),
     Idiom("Literals & types", "0x1F", "0x1f -> Int"),
     Idiom("Literals & types", "3i", "3.0im"),
     Idiom("Literals & types", "'text' (char array)", "\"text\"", status = :partial, notes = "char-array semantics approximated by String"),
@@ -95,8 +97,8 @@ const IDIOMS = Idiom[
     Idiom("Linear algebra & arrays", "trace(A)", "tr(A)", builtin = :trace, notes = "LinearAlgebra; renamed"),
     Idiom("Linear algebra & arrays", "transpose(x)", "transpose(x)", builtin = :transpose),
     Idiom("Linear algebra & arrays", "reshape(A,m,n)", "reshape(A, m, n)", builtin = :reshape, notes = "column-major in both; `[]` dim -> `:`"),
-    Idiom("Linear algebra & arrays", "fliplr/flipud/flip", "reverse(…, dims=2/1)/reverse", builtin = :fliplr, status = :partial, notes = "fliplr expects a matrix; a row vector is now 1-D -> use flip/reverse"),
-    Idiom("Linear algebra & arrays", "sort(x)", "sort(x)", builtin = :sort, status = :partial, notes = "vectors; matrix needs dims"),
+    Idiom("Linear algebra & arrays", "fliplr/flipud/flip", "reverse(…, dims=2/1)/reverse", builtin = :fliplr),
+    Idiom("Linear algebra & arrays", "sort(x)/cumsum/cumprod", "ndims-dispatched (dims=first non-singleton for ≥2-D)", builtin = :sort, notes = "works for vectors and 1×N rows"),
     Idiom("Linear algebra & arrays", "unique(x)", "sort(unique(x))", builtin = :unique, notes = "MATLAB unique is sorted"),
     Idiom("Linear algebra & arrays", "cumsum/cumprod", "cumsum/cumprod", builtin = :cumsum, status = :partial, notes = "vectors; matrix needs dims"),
     Idiom("Linear algebra & arrays", "any(x)/all(x)", "any(x)/all(x)", builtin = :any, status = :partial, notes = "vectors; matrix reduces per-column in MATLAB"),
