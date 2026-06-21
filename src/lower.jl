@@ -473,15 +473,20 @@ function lower_block(ctx::Ctx, blk::CSTNode)
 end
 
 # Some builtins return a different thing under a 2nd output: `[m,i]=max(v)` -> findmax (value+index),
-# `[s,p]=sort(v)` -> (sorted, permutation). Detected only for the single-array form.
+# `[s,p]=sort(v)` -> (sorted, permutation); `deal` distributes its inputs to the outputs.
 function _multioutput_rhs(ctx::Ctx, right, nout::Int, default)
     (nout >= 2 && right !== nothing && right.kind === :function_call) || return default
     nm = _field(right, :name)
     (nm !== nothing && nm.kind === :identifier) || return default
     an = _childkind(right, :arguments)
     args = an === nothing ? Any[] : map(c -> lower_expr(ctx, c), _named(an))
-    length(args) == 1 || return default
     fname = Symbol(nodetext(ctx.cst, nm))
+    if fname === :deal                       # [a,b,c]=deal(x) -> (x,x,x); [a,b]=deal(p,q) -> (p,q)
+        length(args) == 1 && return Expr(:tuple, (args[1] for _ in 1:nout)...)
+        length(args) == nout && return Expr(:tuple, args...)
+        return default
+    end
+    length(args) == 1 || return default
     fname === :max && return Expr(:call, :findmax, args[1])     # (value, index) — vector: Int index
     fname === :min && return Expr(:call, :findmin, args[1])
     fname === :sort && return Expr(:tuple, Expr(:call, :sort, args[1]), Expr(:call, :sortperm, args[1]))

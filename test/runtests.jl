@@ -418,6 +418,16 @@ end
         @test (nv.x, nv.y) == (-1.0, -2.0)
     end
 
+    @testset "deal distributes inputs to multiple outputs" begin
+        @test occursin("(a, b, c) = (0, 0, 0)", convert_matlab("[a, b, c] = deal(0);\n"; wrap_script = false).julia)
+        @test occursin("(x, y) = (p, q)", convert_matlab("[x, y] = deal(p, q);\n"; wrap_script = false).julia)
+        @test occursin("v = 5", convert_matlab("v = deal(5);\n"; wrap_script = false).julia)
+        jl = convert_matlab("function [a, b, c] = z()\n  [a, b, c] = deal(7);\nend\n").julia
+        mod = Module()
+        Base.include_string(mod, jl)
+        @test Base.invokelatest(getfield(mod, :z)) == (7, 7, 7)
+    end
+
     @testset "global declarations -> shared module-level state" begin
         jl = convert_matlab("function increment()\n  global counter\n  counter = counter + 1;\nend\n").julia
         @test occursin("global counter", jl)

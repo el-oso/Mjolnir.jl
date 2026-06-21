@@ -113,6 +113,7 @@ const SPECIAL = Dict{Symbol, Function}(
     :tril => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :tril, a...)),
     :triu => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :triu, a...)),
     :repmat => (ctx, a) -> Expr(:call, :repeat, a...),
+    :deal => (ctx, a) -> a[1],                           # single-output deal(x) -> x (multi handled in lower)
     :disp => (ctx, a) -> Expr(:call, :println, a...),
     :find => (ctx, a) -> Expr(:call, :findall, Expr(:call, :!, :iszero), a...),
     :sum => (ctx, a) -> length(a) == 1 ? Expr(:call, :sum, a[1]) :

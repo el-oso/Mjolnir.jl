@@ -170,6 +170,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | 🟡 | `single-line ;-separated control flow` | `—` | grammar emits ERROR; use newlines (flagged via has_error) |
 | ✅ | `[~, x] = f(...)` | `(_, x) = ...` | ~ ignored-output placeholder kept in position |
 | ✅ | `global x y` | `global x, y (shared module-level state)` | persistent still dropped (function-static; needs a Ref/closure) |
+| ✅ | `[a,b,c]=deal(x) / [a,b]=deal(p,q)` | `(a,b,c)=(x,x,x) / (a,b)=(p,q)` | distributes inputs to outputs |
 | ✅ | `[m,i]=max(v) / [m,i]=min(v) / [s,p]=sort(v)` | `findmax / findmin / (sort(v), sortperm(v))` | output-arity-dependent; vector index is Int (matrix max index -> CartesianIndex differs) |
 
 ## Scripts vs functions
