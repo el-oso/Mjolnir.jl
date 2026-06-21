@@ -2,6 +2,8 @@
 
 Mjolnir is an IR pipeline. Each stage is one file in `src/`:
 
+![Mjolnir pipeline: .m source → parse (tree-sitter FFI → MatlabCST) → lower (CST → Julia Expr) → idiomatic (run_semantic + run_idiomatic) → emit (JuliaSyntax validity gate) → assemble (.m tree → Julia package), with an optional, gated LLM refinement step that is kept only if behaviorally equivalent.](assets/pipeline.svg)
+
 ```
 .m source ─▶ parse.jl      (tree-sitter FFI → MatlabCST)
           ─▶ lower.jl      (CST → Julia Expr; scope-resolves call-vs-index; uses builtins.jl)

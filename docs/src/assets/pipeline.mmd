@@ -1,0 +1,18 @@
+%% Source for assets/pipeline.svg. Regenerate after edits with:
+%%   mmdc -i pipeline.mmd -o pipeline.svg -b transparent -p puppeteer.json
+%% where puppeteer.json is {"args":["--no-sandbox"]} on sandboxed CI.
+flowchart LR
+    A["<b>.m source</b><br/>scripts · functions · classdef · projects"]
+    A --> P["<b>parse</b><br/>tree-sitter FFI &rarr; MatlabCST"]
+    P --> L["<b>lower</b><br/>CST &rarr; Julia Expr<br/>(call-vs-index, builtins)"]
+    L --> I["<b>idiomatic</b><br/>run_semantic + run_idiomatic<br/>(de-broadcast, comprehensions)"]
+    I --> E["<b>emit</b><br/>Expr &rarr; source<br/>JuliaSyntax validity gate"]
+    E --> AS["<b>assemble</b><br/>.m tree &rarr; Julia package"]
+    AS --> O(["<b>idiomatic Julia</b><br/>loadable package"])
+    E -. "optional, gated" .-> G(["<b>LLM refine</b><br/>kept only if equivalent"])
+    G -.-> AS
+
+    style A fill:#e3f2fd,stroke:#1565c0,color:#0d2440
+    style O fill:#e8f5e9,stroke:#2e7d32,color:#0d2440
+    style I fill:#fff3e0,stroke:#e65100,color:#0d2440
+    style E fill:#fff3e0,stroke:#e65100,color:#0d2440
