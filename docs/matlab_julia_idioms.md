@@ -187,6 +187,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `constructor function obj = C(...)` | `inner constructor using new()` |  |
 | ✅ | `method function r = m(obj,...)` | `function m(obj::C, ...)` |  |
 | ✅ | `operator methods plus/minus/mtimes/eq/lt/uminus/transpose/horzcat/...` | `extend Base.:+ / :- / :* / :(==) / :< / unary :- / transpose / hcat ...` | so a+b, a==b, -a, a' dispatch; elementwise times/rdivide/power left as plain methods (route via *) |
+| ✅ | `disp(obj) / display(obj)` | `Base.show(io::IO, obj::C)` | io injected; body prints redirected (fprintf -> @printf io, disp -> println(io,…)); integrates with print/string/REPL |
 | 🟡 | `classdef C < S` | `abstract type AbstractC <: AbstractS` | inheritance only when S converted in the same unit |
 | ⬜ | `struct arrays / events / Access= attrs` | `—` |  |
 

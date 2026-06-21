@@ -623,6 +623,20 @@ _uses_sym(e::Symbol, s) = e === s
 _uses_sym(e::Expr, s) = any(a -> _uses_sym(a, s), e.args)
 _uses_sym(::Any, s) = false
 
+# Redirect a (classdef disp/display) method's output to an `io` stream, so it can extend Base.show:
+# println/print(x) -> println/print(io, x); Printf.@printf fmt args -> @printf io fmt args.
+_redirect_io(e, io) = e
+function _redirect_io(e::Expr, io)
+    (e.head === :function || e.head === :->) && return e
+    if e.head === :call && (e.args[1] === :println || e.args[1] === :print)
+        return Expr(:call, e.args[1], io, e.args[2:end]...)
+    elseif e.head === :macrocall && e.args[1] isa Expr && e.args[1].head === :. &&
+            length(e.args[1].args) >= 2 && e.args[1].args[2] == QuoteNode(Symbol("@printf"))
+        return Expr(:macrocall, e.args[1], e.args[2], io, e.args[3:end]...)
+    end
+    return Expr(e.head, map(x -> _redirect_io(x, io), e.args)...)
+end
+
 # Call-like args = no colon/range/end and no loop-index argument (those mark indexing).
 function _calllike_args(ctx::Ctx, nd::CSTNode, loopidx)
     an = _childkind(nd, :arguments)
@@ -843,6 +857,15 @@ end
 function _lower_method(ctx::Ctx, fdef::CSTNode, cname::Symbol)
     f = lower_function(ctx, fdef)            # Expr(:function, Expr(:call, name, params...), body)
     call = f.args[1]
+    # disp/display -> Base.show(io::IO, obj::C): inject an `io` param and redirect prints to it,
+    # so the converted object integrates with Julia's display system (print/string/REPL).
+    if call.args[1] in (:disp, :display) && length(call.args) >= 2
+        obj = call.args[2]
+        objp = obj isa Symbol ? Expr(:(::), obj, cname) : obj
+        call.args = Any[Expr(:., :Base, QuoteNode(:show)), Expr(:(::), :io, :IO), objp]
+        f.args[2] = _redirect_io(f.args[2], :io)
+        return f
+    end
     # Operator-overload methods must extend the corresponding Base operator (`Base.:+`, …) so the
     # class actually responds to `a + b`, `a == b`, `-a`, `a'`, etc. (`transpose`/`adjoint` live in
     # Base too).

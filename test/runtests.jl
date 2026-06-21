@@ -418,6 +418,20 @@ end
         @test (nv.x, nv.y) == (-1.0, -2.0)
     end
 
+    @testset "classdef disp/display -> Base.show (e2e display integration)" begin
+        src = "classdef P\n  properties\n    x\n  end\n  methods\n" *
+            "    function obj = P(v)\n      obj.x = v;\n    end\n" *
+            "    function disp(obj)\n      fprintf('P(%g)\\n', obj.x);\n    end\n  end\nend\n"
+        jl = convert_matlab(src).julia
+        @test occursin("function Base.show(io::IO, obj::P)", jl)
+        @test occursin("@printf io", jl)
+        mod = Module()
+        Base.include_string(mod, "using Printf\n" * jl)
+        P = getfield(mod, :P)
+        p = Base.invokelatest(P, 3.5)
+        @test Base.invokelatest(sprint, show, p) == "P(3.5)\n"
+    end
+
     @testset "multi-output: ~ placeholder + arity-dependent builtins" begin
         @test occursin("(_, idx) = findmax(v)", convert_matlab("[~, idx] = max(v);\n"; wrap_script = false).julia)
         @test occursin("(mn, j) = findmin(v)", convert_matlab("[mn, j] = min(v);\n"; wrap_script = false).julia)
