@@ -462,14 +462,34 @@ function lower_block(ctx::Ctx, blk::CSTNode)
     return Expr(:block, stmts...)
 end
 
+# Some builtins return a different thing under a 2nd output: `[m,i]=max(v)` -> findmax (value+index),
+# `[s,p]=sort(v)` -> (sorted, permutation). Detected only for the single-array form.
+function _multioutput_rhs(ctx::Ctx, right, nout::Int, default)
+    (nout >= 2 && right !== nothing && right.kind === :function_call) || return default
+    nm = _field(right, :name)
+    (nm !== nothing && nm.kind === :identifier) || return default
+    an = _childkind(right, :arguments)
+    args = an === nothing ? Any[] : map(c -> lower_expr(ctx, c), _named(an))
+    length(args) == 1 || return default
+    fname = Symbol(nodetext(ctx.cst, nm))
+    fname === :max && return Expr(:call, :findmax, args[1])     # (value, index) — vector: Int index
+    fname === :min && return Expr(:call, :findmin, args[1])
+    fname === :sort && return Expr(:tuple, Expr(:call, :sort, args[1]), Expr(:call, :sortperm, args[1]))
+    return default
+end
+
 function lower_assignment(ctx::Ctx, n::CSTNode)
     left = _field(n, :left)
     rhs = lower_expr(ctx, _field(n, :right))
     if left.kind === :identifier
         return Expr(:(=), _idsym(ctx, left), rhs)
     elseif left.kind === :multioutput_variable
-        targets = [_idsym(ctx, id) for id in _childrenkind(left, :identifier)]
-        return Expr(:(=), Expr(:tuple, targets...), rhs)
+        targets = Any[]                                  # `~` (ignored_argument) -> `_`, kept in place
+        for ch in _named(left)
+            ch.kind === :identifier && push!(targets, _idsym(ctx, ch))
+            ch.kind === :ignored_argument && push!(targets, :_)
+        end
+        return Expr(:(=), Expr(:tuple, targets...), _multioutput_rhs(ctx, _field(n, :right), length(targets), rhs))
     elseif left.kind === :function_call
         name = _idsym(ctx, _field(left, :name))
         argsnode = _childkind(left, :arguments)

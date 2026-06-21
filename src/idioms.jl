@@ -184,6 +184,8 @@ const IDIOMS = Idiom[
     Idiom("classdef", "method function r = m(obj,...)", "function m(obj::C, ...)"),
     Idiom("classdef", "operator methods plus/minus/mtimes/eq/lt/uminus/transpose/horzcat/...", "extend Base.:+ / :- / :* / :(==) / :< / unary :- / transpose / hcat ...", notes = "so a+b, a==b, -a, a' dispatch; elementwise times/rdivide/power left as plain methods (route via *)"),
     Idiom("Strings, conversions & maps", "cell content-index c{i} / c{:} / [c{:}] / f(c{:})", "c[i] / splat c... / [c...] / f(c...)", notes = "{} is getindex; c{:} is a comma-separated list -> splat. c{i}(j) after a brace stays a call (computed-callee ambiguity)"),
+    Idiom("Control flow & functions", "[~, x] = f(...)", "(_, x) = ...", notes = "~ ignored-output placeholder kept in position"),
+    Idiom("Control flow & functions", "[m,i]=max(v) / [m,i]=min(v) / [s,p]=sort(v)", "findmax / findmin / (sort(v), sortperm(v))", notes = "output-arity-dependent; vector index is Int (matrix max index -> CartesianIndex differs)"),
     Idiom("classdef", "classdef C < S", "abstract type AbstractC <: AbstractS", status = :partial, notes = "inheritance only when S converted in the same unit"),
     Idiom("classdef", "struct arrays / events / Access= attrs", "—", status = :todo),
 ]

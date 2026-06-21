@@ -418,6 +418,17 @@ end
         @test (nv.x, nv.y) == (-1.0, -2.0)
     end
 
+    @testset "multi-output: ~ placeholder + arity-dependent builtins" begin
+        @test occursin("(_, idx) = findmax(v)", convert_matlab("[~, idx] = max(v);\n"; wrap_script = false).julia)
+        @test occursin("(mn, j) = findmin(v)", convert_matlab("[mn, j] = min(v);\n"; wrap_script = false).julia)
+        @test occursin("(s, p) = (sort(v), sortperm(v))", convert_matlab("[s, p] = sort(v);\n"; wrap_script = false).julia)
+        @test occursin("y = maximum(v)", convert_matlab("y = max(v);\n"; wrap_script = false).julia)   # single output unchanged
+        jl = convert_matlab("function [m, i] = mymax(v)\n  [m, i] = max(v);\nend\n").julia
+        mod = Module()
+        Base.include_string(mod, jl)
+        @test Base.invokelatest(getfield(mod, :mymax), [3.0, 1, 4, 1, 5, 9, 2, 6]) == (9.0, 6)
+    end
+
     @testset "cell content-indexing {} and comma-separated lists" begin
         @test occursin("x = c[2]", convert_matlab("x = c{2};\n"; wrap_script = false).julia)
         @test occursin("f(c...)", convert_matlab("f(c{:});\n"; wrap_script = false).julia)

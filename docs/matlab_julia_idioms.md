@@ -168,6 +168,8 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `nargin` | `computed prologue + optional params` |  |
 | 🟡 | `nargout` | `nargout = <#declared outputs>` | assumes all outputs requested (Julia has no caller arity) |
 | 🟡 | `single-line ;-separated control flow` | `—` | grammar emits ERROR; use newlines (flagged via has_error) |
+| ✅ | `[~, x] = f(...)` | `(_, x) = ...` | ~ ignored-output placeholder kept in position |
+| ✅ | `[m,i]=max(v) / [m,i]=min(v) / [s,p]=sort(v)` | `findmax / findmin / (sort(v), sortperm(v))` | output-arity-dependent; vector index is Int (matrix max index -> CartesianIndex differs) |
 
 ## Scripts vs functions
 
