@@ -352,6 +352,12 @@ end
         @test occursin("eigvals(A)", convert_matlab("e = eig(A);\n"; wrap_script = false).julia)
     end
 
+    @testset "classdef empty/abstract method bodies & persistent don't crash" begin
+        @test convert_matlab("classdef C\n  methods\n    function y = f(obj)\n    end\n  end\nend\n") isa ConvertResult
+        r = convert_matlab("function g()\n  persistent n\n  n = 1;\nend\n")
+        @test any(t -> occursin("persistent", t), r.todos)
+    end
+
     @testset "empty blocks don't crash (if/for/while/try with no body)" begin
         for s in ("if x\nend\n", "for i = 1:n\nend\n", "while c\nend\n", "if x\nelse\nend\n", "try\nend\n")
             @test convert_matlab(s; wrap_script = false) isa ConvertResult

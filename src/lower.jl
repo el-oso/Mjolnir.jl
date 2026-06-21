@@ -34,6 +34,13 @@ _childrenkind(n::CSTNode, k::Symbol) = filter(c -> c.kind === k, n.children)
 # Named children, minus `...` line-continuations (transparent; they're not real elements).
 _named(n::CSTNode) = filter(c -> c.named && c.kind !== :line_continuation, n.children)
 
+# Defensive nothing-handling: a missing child (e.g. an abstract method with no body block) should
+# yield empty/nothing rather than crash the navigation helpers.
+_field(::Nothing, ::Symbol) = nothing
+_childkind(::Nothing, ::Symbol) = nothing
+_childrenkind(::Nothing, ::Symbol) = CSTNode[]
+_named(::Nothing) = CSTNode[]
+
 "Text of the operator token (first anonymous child)."
 function _optoken(ctx::Ctx, n::CSTNode)
     for c in n.children
@@ -393,6 +400,10 @@ function lower_stmt(ctx::Ctx, n::CSTNode)
         return lower_try(ctx, n)
     elseif k === :comment
         return nothing
+    elseif k === :persistent_operator || k === :global_operator
+        kw = k === :persistent_operator ? "persistent" : "global"
+        push!(ctx.todos, "dropped `$kw` declaration (no direct Julia equivalent; use a Ref/closure)")
+        return nothing
     elseif k === :command
         nm = _childkind(n, :command_name)
         push!(ctx.todos, "dropped MATLAB command: $(nm === nothing ? "?" : nodetext(ctx.cst, nm))")
@@ -570,6 +581,7 @@ function _calllike_args(ctx::Ctx, nd::CSTNode, loopidx)
 end
 
 # Loop-index variables introduced by `for` iterators within a block.
+_loopidx(::Ctx, ::Nothing) = Set{Symbol}()
 function _loopidx(ctx::Ctx, blk)
     idx = Set{Symbol}()
     walk(blk) do nd
@@ -585,6 +597,7 @@ end
 # arithmetic, never indexed-assigned, never with colon/range args, and never called with a loop
 # index (which would be array indexing) — is a function handle, so its calls stay calls (`f(x)`,
 # not `f[x]`). The loop-index exclusion avoids misclassifying read-only array params like `y(i)`.
+_callonly_params(::Ctx, ::Nothing, params) = Symbol[]
 function _callonly_params(ctx::Ctx, blk, params)
     isempty(params) && return Symbol[]
     pset = Set(params)
