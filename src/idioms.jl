@@ -150,6 +150,11 @@ const IDIOMS = Idiom[
     Idiom("Strings, conversions & maps", "keys(m)/values(m)", "collect(keys(m))/collect(values(m))", builtin = :keys, status = :partial, notes = "MATLAB order (sorted) vs Julia (unordered)"),
     Idiom("Strings, conversions & maps", "isKey(m,k)/remove(m,k)", "haskey(m,k)/delete!(m,k)", builtin = :isKey),
     Idiom("Strings, conversions & maps", "obj.method(args)", "method(obj, args...)", notes = "method-call syntax"),
+    Idiom("Strings, conversions & maps", "strsplit/strjoin/deblank/fileread", "split / join / rstrip / read(_,String)", builtin = :strsplit),
+    Idiom("Strings, conversions & maps", "regexprep(s,pat,rep)", "replace(s, Regex(pat) => rep)", builtin = :regexprep, notes = "regexp itself still TODO (option-dependent API)"),
+    Idiom("Strings, conversions & maps", "char/class/isequaln/typecast", "Char. / string(typeof(x)) / isequal / reinterpret", builtin = :class),
+    Idiom("Strings, conversions & maps", "cellfun/arrayfun(f, …)", "map(f, …)", builtin = :cellfun, notes = "drops trailing 'UniformOutput',false"),
+    Idiom("Strings, conversions & maps", "isa(x,'type') / ischar/isnumeric/isstruct/iscell/islogical", "x isa T / eltype-based", builtin = :isa, status = :partial, notes = "approximate (MATLAB type system != Julia)"),
 
     # --- Control flow & functions ---
     Idiom("Control flow & functions", "if/elseif/else/end", "if/elseif/else/end"),

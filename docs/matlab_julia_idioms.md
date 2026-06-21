@@ -138,6 +138,11 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | 🟡 | `keys(m)/values(m)` | `collect(keys(m))/collect(values(m))` | MATLAB order (sorted) vs Julia (unordered) |
 | ✅ | `isKey(m,k)/remove(m,k)` | `haskey(m,k)/delete!(m,k)` |  |
 | ✅ | `obj.method(args)` | `method(obj, args...)` | method-call syntax |
+| ✅ | `strsplit/strjoin/deblank/fileread` | `split / join / rstrip / read(_,String)` |  |
+| ✅ | `regexprep(s,pat,rep)` | `replace(s, Regex(pat) => rep)` | regexp itself still TODO (option-dependent API) |
+| ✅ | `char/class/isequaln/typecast` | `Char. / string(typeof(x)) / isequal / reinterpret` |  |
+| ✅ | `cellfun/arrayfun(f, …)` | `map(f, …)` | drops trailing 'UniformOutput',false |
+| 🟡 | `isa(x,'type') / ischar/isnumeric/isstruct/iscell/islogical` | `x isa T / eltype-based` | approximate (MATLAB type system != Julia) |
 
 ## Control flow & functions
 
