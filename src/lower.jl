@@ -379,6 +379,12 @@ function lower_stmt(ctx::Ctx, n::CSTNode)
         return Expr(:break)
     elseif k === :continue_statement
         return Expr(:continue)
+    elseif k === :return_statement
+        return Expr(:return)                 # outputs are filled in by lower_function
+    elseif k === :switch_statement
+        return lower_switch(ctx, n)
+    elseif k === :try_statement
+        return lower_try(ctx, n)
     elseif k === :comment
         return nothing
     elseif k === :command
@@ -498,6 +504,49 @@ function lower_while(ctx::Ctx, n::CSTNode)
     return Expr(:while, cond, body)
 end
 
+# MATLAB switch/case/otherwise -> Julia if/elseif/else (Julia has no switch). A `case {a,b}`
+# (cell) matches any value -> `sv == a || sv == b`.
+function _case_test(ctx::Ctx, sv, condnode::CSTNode)
+    if condnode.kind === :cell
+        vals = [lower_expr(ctx, c) for r in _childrenkind(condnode, :row) for c in _named(r)]
+        return foldl((a, b) -> Expr(:||, a, b), [Expr(:call, :(==), sv, v) for v in vals])
+    end
+    return Expr(:call, :(==), sv, lower_expr(ctx, condnode))
+end
+
+function lower_switch(ctx::Ctx, n::CSTNode)
+    sv = lower_expr(ctx, _field(n, :condition))
+    cases = _childrenkind(n, :case_clause)
+    otherw = _childkind(n, :otherwise_clause)
+    elsepart = otherw === nothing ? nothing : lower_block(ctx, _childkind(otherw, :block))
+    isempty(cases) && return elsepart === nothing ? Expr(:block) : elsepart
+    pairs = [(_case_test(ctx, sv, _field(cc, :condition)), lower_block(ctx, _childkind(cc, :block))) for cc in cases]
+    for (test, blk) in reverse(pairs[2:end])
+        elsepart = elsepart === nothing ? Expr(:elseif, test, blk) : Expr(:elseif, test, blk, elsepart)
+    end
+    t1, b1 = pairs[1]
+    return elsepart === nothing ? Expr(:if, t1, b1) : Expr(:if, t1, b1, elsepart)
+end
+
+function lower_try(ctx::Ctx, n::CSTNode)
+    tryblk = lower_block(ctx, _childkind(n, :block))
+    cc = _childkind(n, :catch_clause)
+    cc === nothing && return Expr(:try, tryblk, false, false)
+    errid = _childkind(cc, :identifier)
+    var = errid === nothing ? false : _idsym(ctx, errid)
+    return Expr(:try, tryblk, var, lower_block(ctx, _childkind(cc, :block)))
+end
+
+# Replace a bare MATLAB `return` with one that carries the function's outputs.
+_fill_returns(e, retval) = e
+function _fill_returns(e::Expr, retval)
+    (e.head === :function || e.head === :->) && return e
+    if e.head === :return && isempty(e.args)
+        return retval === nothing ? e : Expr(:return, retval)
+    end
+    return Expr(e.head, map(x -> _fill_returns(x, retval), e.args)...)
+end
+
 _uses_sym(e::Symbol, s) = e === s
 _uses_sym(e::Expr, s) = any(a -> _uses_sym(a, s), e.args)
 _uses_sym(::Any, s) = false
@@ -601,12 +650,10 @@ function lower_function(ctx::Ctx, n::CSTNode)
     # requested (the common case) — inject `nargout = <#outputs>` when the body uses it.
     _uses_sym(body, :nargout) && push!(pre, Expr(:(=), :nargout, length(outs)))
 
-    stmts = Any[pre...; body.args...]
-    if length(outs) == 1
-        push!(stmts, Expr(:return, outs[1]))
-    elseif length(outs) > 1
-        push!(stmts, Expr(:return, Expr(:tuple, outs...)))
-    end
+    retval = length(outs) == 1 ? outs[1] : (length(outs) > 1 ? Expr(:tuple, outs...) : nothing)
+    bodystmts = Any[_fill_returns(s, retval) for s in body.args]   # early `return` carries outputs
+    stmts = Any[pre...; bodystmts...]
+    retval === nothing || push!(stmts, Expr(:return, retval))
     return Expr(:function, Expr(:call, fname, sig...), Expr(:block, stmts...))
 end
 

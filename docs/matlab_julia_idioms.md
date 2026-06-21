@@ -9,8 +9,10 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | | MATLAB | Julia | Notes |
 |---|---|---|---|
 | ✅ | `42 / 2.5 / 1e3` | `42 / 2.5 / 1e3` | integer literals stay Int |
-| 🟡 | `[1 2 3] / [1;2;3]` | `[1, 2, 3] (1-D Vector)` | MATLAB row & column vectors both -> Julia Vector; transpose, row×col inner product, and size() diverge |
+| ✅ | `[1 2 3] (row)` | `[1 2 3] (1×N Matrix)` | MATLAB-faithful: size(x,2), transpose, x*y, and [A b] concatenation all work |
+| ✅ | `[1;2;3] (column)` | `[1, 2, 3] (Vector)` |  |
 | ✅ | `[1 2; 3 4]` | `[1 2; 3 4] (Matrix)` |  |
+| ✅ | `[A b] / [A; b]` | `hcat / vcat (concatenation)` |  |
 | ✅ | `0x1F` | `0x1f -> Int` |  |
 | ✅ | `3i` | `3.0im` |  |
 | 🟡 | `'text' (char array)` | `"text"` | char-array semantics approximated by String |
@@ -92,8 +94,8 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `trace(A)` | `tr(A)` | LinearAlgebra; renamed |
 | ✅ | `transpose(x)` | `transpose(x)` |  |
 | ✅ | `reshape(A,m,n)` | `reshape(A, m, n)` | column-major in both; `[]` dim -> `:` |
-| 🟡 | `fliplr/flipud/flip` | `reverse(…, dims=2/1)/reverse` | fliplr expects a matrix; a row vector is now 1-D -> use flip/reverse |
-| 🟡 | `sort(x)` | `sort(x)` | vectors; matrix needs dims |
+| ✅ | `fliplr/flipud/flip` | `reverse(…, dims=2/1)/reverse` |  |
+| ✅ | `sort(x)/cumsum/cumprod` | `ndims-dispatched (dims=first non-singleton for ≥2-D)` | works for vectors and 1×N rows |
 | ✅ | `unique(x)` | `sort(unique(x))` | MATLAB unique is sorted |
 | 🟡 | `cumsum/cumprod` | `cumsum/cumprod` | vectors; matrix needs dims |
 | 🟡 | `any(x)/all(x)` | `any(x)/all(x)` | vectors; matrix reduces per-column in MATLAB |
@@ -138,7 +140,9 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `if/elseif/else/end` | `if/elseif/else/end` |  |
 | ✅ | `for v = expr ... end` | `for v in expr ... end` |  |
 | ✅ | `while c ... end` | `while c ... end` |  |
-| ✅ | `break / continue` | `break / continue` |  |
+| ✅ | `break / continue / return` | `break / continue / return` | early `return` carries the function's outputs |
+| ✅ | `switch/case/otherwise` | `if/elseif/else` | `case {a,b}` -> `sv == a || sv == b` |
+| ✅ | `try/catch e` | `try/catch e` |  |
 | ✅ | `function y = f(a,b)` | `function f(a, b) ... return y end` |  |
 | ✅ | `function [u,v] = f(...)` | `... return (u, v) end` |  |
 | ✅ | `varargin / varargin{i}` | `varargin... / varargin[i]` |  |

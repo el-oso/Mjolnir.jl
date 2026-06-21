@@ -332,6 +332,21 @@ end
         @test occursin("eigvals(A)", convert_matlab("e = eig(A);\n"; wrap_script = false).julia)
     end
 
+    @testset "switch / try-catch / early return" begin
+        sw = convert_matlab("function y = f(x)\n  switch x\n    case 1\n      y = 10;\n    case {2,3}\n      y = 20;\n    otherwise\n      y = 0;\n  end\nend\n").julia
+        @test occursin("if x == 1", sw)
+        @test occursin("x == 2 || x == 3", sw)        # cell case -> any match
+        m = Module(); Base.include_string(m, sw)
+        @test Base.invokelatest(getfield(m, :f), 3) == 20
+        @test Base.invokelatest(getfield(m, :f), 7) == 0
+
+        g = convert_matlab("function y = h(x)\n  if x < 0\n    y = -1;\n    return;\n  end\n  try\n    y = 1 / x;\n  catch e\n    y = 0;\n  end\nend\n").julia
+        @test occursin("return y", g)                  # early return carries the output
+        @test occursin("catch e", g)
+        m2 = Module(); Base.include_string(m2, g)
+        @test Base.invokelatest(getfield(m2, :h), -5) == -1
+    end
+
     @testset "loop scoping: value survives loop; loop index persists (MATLAB flat scope)" begin
         # x first-assigned in the loop and used after; i (loop index) used after (matches MATLAB)
         src = "function r = f(n)\n  for i = 1:n\n    x = i * i;\n  end\n  r = x + i;\nend\n"

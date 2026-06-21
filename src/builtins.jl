@@ -38,8 +38,10 @@ _printf_args(a) = isempty(a) ? a : Any[_unescape_printf(a[1]), a[2:end]...]
 # First non-singleton dimension of x, defaulting to 1 — matches MATLAB's default reduction dim.
 _fnsd(x) = Expr(:call, :something, Expr(:call, :findfirst, Expr(:call, :>, 1), Expr(:call, :size, x)), 1)
 # `f(x)` for a 1-D vector (no dims allowed), `f(x; dims=first-non-singleton)` for ≥2-D (e.g. 1×N).
-_dimsafe(f::Symbol, x) = Expr(:if, Expr(:call, :(==), Expr(:call, :ndims, x), 1),
-    Expr(:call, f, x), Expr(:call, f, x, Expr(:kw, :dims, _fnsd(x))))
+_dimsafe(f::Symbol, x) = Expr(
+    :if, Expr(:call, :(==), Expr(:call, :ndims, x), 1),
+    Expr(:call, f, x), Expr(:call, f, x, Expr(:kw, :dims, _fnsd(x)))
+)
 
 """
     lower_builtin(ctx, name, args) -> Expr
