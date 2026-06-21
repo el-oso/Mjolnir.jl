@@ -8,6 +8,18 @@
 /test/Manifest.toml
 /docs/Manifest.toml
 
+# Documentation build artifacts (DocumenterVitepress / VitePress / Node)
+/docs/build/
+/docs/node_modules/
+/docs/package-lock.json
+/docs/src/idioms.md          # generated at build time from src/idioms.jl
+/docs/src/.vitepress/cache/
+/docs/src/.vitepress/dist/
+
+# Coverage
+*.cov
+lcov.info
+
 # Editor / OS
 *.swp
 .DS_Store

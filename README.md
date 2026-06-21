@@ -1,5 +1,12 @@
 # Mjolnir.jl
 
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://el-oso.github.io/Mjolnir.jl/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://el-oso.github.io/Mjolnir.jl/dev/)
+[![CI](https://github.com/el-oso/Mjolnir.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/el-oso/Mjolnir.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/el-oso/Mjolnir.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/el-oso/Mjolnir.jl)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code style: Runic](https://img.shields.io/badge/code_style-Runic-000000.svg)](https://github.com/fredrikekre/Runic.jl)
+
 **Hammering MATLAB into shape.**
 
 A source-level **MATLAB → idiomatic Julia** converter, written in Julia. It turns `.m`
@@ -15,12 +22,24 @@ Mjolnir is the **source-transpilation** complement to the runtime-interop trio
 [Unmex.jl](https://github.com/el-oso/Unmex.jl) (call a MEX from Julia), and
 [LibMx.jl](https://github.com/el-oso/LibMx.jl) (shared mxArray FFI).
 
+## Installation
+
+Mjolnir is not yet registered in General. Install from GitHub, then build the parser once:
+
+```julia
+using Pkg
+Pkg.add(url = "https://github.com/el-oso/Mjolnir.jl")
+
+import Mjolnir
+include(joinpath(pkgdir(Mjolnir), "deps", "build.jl"))   # compiles the MATLAB grammar (needs cc + git)
+```
+
+[Octave](https://octave.org) on `PATH` is optional — only the differential-oracle tests use it
+(as an arm's-length subprocess; never linked, source never read).
+
 ## Quick start
 
 ```julia
-julia> import Mjolnir
-julia> include(joinpath(pkgdir(Mjolnir), "deps", "build.jl"))   # once: build the MATLAB grammar
-
 julia> using Mjolnir
 julia> println(convert_matlab("""
        function y = sq(x)
@@ -36,8 +55,10 @@ julia> convert_file("analysis.m")            # one file
 julia> convert_project("matlab/", "out/"; name = "MyPkg")   # a whole project -> a Julia package
 ```
 
-How it works, the supported subset, and the exact translation rules live in
-[`docs/matlab_julia_idioms.md`](docs/matlab_julia_idioms.md). Contributor/agent notes are in
+Full documentation is at **[el-oso.github.io/Mjolnir.jl](https://el-oso.github.io/Mjolnir.jl/dev/)**.
+The exact, normative translation rules live in the
+[idiom map](https://el-oso.github.io/Mjolnir.jl/dev/idioms) (generated from
+[`docs/matlab_julia_idioms.md`](docs/matlab_julia_idioms.md)). Contributor/agent notes are in
 [`CLAUDE.md`](CLAUDE.md).
 
 ## Highlights

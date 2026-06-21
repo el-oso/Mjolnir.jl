@@ -65,6 +65,11 @@ end
 "Materialize the source text spanned by `n`."
 nodetext(cst::MatlabCST, n::CSTNode) = String(codeunits(cst.source)[n.span])
 
+"""
+    children(n::CSTNode) -> Vector{CSTNode}
+
+The child nodes of a CST node (named and anonymous alike), in source order.
+"""
 children(n::CSTNode) = n.children
 
 "Depth-first pre-order traversal, applying `f` to every node."

@@ -13,6 +13,15 @@ import JSON
 # Backends
 # ---------------------------------------------------------------------------------------
 
+"""
+    LLMBackend
+
+Abstract supertype for optional LLM refinement backends. Concrete subtypes
+([`HTTPBackend`](@ref), [`SubprocessBackend`](@ref), [`ManualBackend`](@ref),
+[`FunctionBackend`](@ref)) implement [`refine`](@ref). Refinement is always **gated**: use
+[`gated_refine`](@ref), which keeps a candidate only if [`verify_equivalent`](@ref) proves it
+matches the deterministic baseline.
+"""
 abstract type LLMBackend end
 
 "`complete(backend, prompt; system)` -> raw model text. Implemented per backend."
