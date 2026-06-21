@@ -61,7 +61,7 @@ julia> include(joinpath(pkgdir(Mjolnir), "deps", "build.jl"))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/Mjolnir.jl#L1-L16" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/Mjolnir.jl#L1-L16" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -80,7 +80,7 @@ convert_matlab(src; modulename=nothing) -> ConvertResult
 Convert MATLAB source text to Julia. With `modulename`, the output is wrapped in a `module`. The result prints as the emitted Julia source.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/emit.jl#L56-L61" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/emit.jl#L56-L61" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -97,7 +97,7 @@ convert_file(path; modulename=nothing) -> ConvertResult
 Convert a MATLAB `.m` file to Julia.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/emit.jl#L80-L84" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/emit.jl#L80-L84" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -122,7 +122,7 @@ Convert a directory of MATLAB sources into a Julia package under `outdir/name`:
 Returns the package directory. Dependency wiring (adding e.g. `LinearAlgebra` to the generated `Project.toml` when converted code needs it) is not yet automated.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/assemble.jl#L24-L36" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/assemble.jl#L24-L36" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -139,7 +139,7 @@ ConvertResult
 Result of a conversion: the emitted `julia` source, the set of `imports` used, and any `todos` (constructs that fell through to a literal / unmapped form).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/emit.jl#L9-L14" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/emit.jl#L9-L14" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -158,7 +158,7 @@ parse_matlab(src) -> MatlabCST
 Parse a MATLAB source string into a concrete syntax tree.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L108-L112" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L108-L112" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -175,7 +175,7 @@ parse_file(path) -> MatlabCST
 Parse a MATLAB source file (`.m`) into a concrete syntax tree.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L145-L149" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L145-L149" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -192,7 +192,7 @@ MatlabCST
 A parsed MATLAB unit: the original `source`, the `root` [`CSTNode`], and `has_error` (true if tree-sitter inserted any ERROR/MISSING nodes).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L53-L58" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L53-L58" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -209,7 +209,7 @@ CSTNode
 A node in the MATLAB concrete syntax tree. `span` is a 1-based inclusive byte range into the source (use [`nodetext`](/api#Mjolnir.nodetext) to materialize the slice). `field` is the node's role in its parent (e.g. `:left`, `:right`, `:name`) or `nothing`. Anonymous tokens (punctuation, keywords, operators) are retained with `named == false`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L37-L44" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L37-L44" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -221,7 +221,7 @@ A node in the MATLAB concrete syntax tree. `span` is a 1-based inclusive byte ra
 Render the named-node s-expression of a CST (handy for inspection and tests).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L156" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L156" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -233,7 +233,7 @@ Render the named-node s-expression of a CST (handy for inspection and tests).
 Materialize the source text spanned by `n`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L65" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L65" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -245,7 +245,7 @@ Materialize the source text spanned by `n`.
 Depth-first pre-order traversal, applying `f` to every node.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L75" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L75" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -257,7 +257,7 @@ Depth-first pre-order traversal, applying `f` to every node.
 Collect every node of the given `kind`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L85" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L85" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -274,7 +274,7 @@ children(n::CSTNode) -> Vector{CSTNode}
 The child nodes of a CST node (named and anonymous alike), in source order.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/parse.jl#L68-L72" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/parse.jl#L68-L72" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -293,7 +293,7 @@ Idiom(category, matlab, julia; status=:ok, builtin=nothing, notes="")
 One MATLAB→Julia mapping. `status` ∈ (`:ok`, `:partial`, `:todo`). `builtin` is the MATLAB function name (a `Symbol`) when the row maps a concrete builtin — used for the code cross-check.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/idioms.jl#L12-L17" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/idioms.jl#L12-L17" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -310,7 +310,7 @@ idioms(; category=nothing, status=nothing, builtin=nothing) -> Vector{Idiom}
 Filtered view of the registry. E.g. `idioms(category="Strings, conversions & maps")` or `idioms(status=:todo)`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/idioms.jl#L202-L207" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/idioms.jl#L202-L207" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -322,7 +322,7 @@ Filtered view of the registry. E.g. `idioms(category="Strings, conversions & map
 Render the registry as a JSON array (for agents/tooling).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/idioms.jl#L270" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/idioms.jl#L270" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -334,7 +334,7 @@ Render the registry as a JSON array (for agents/tooling).
 Render the registry as grouped Markdown tables.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/idioms.jl#L249" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/idioms.jl#L249" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -351,7 +351,7 @@ write_idioms(pkgdir = pkgdir(Mjolnir))
 (Re)generate `docs/matlab_julia_idioms.md` and `docs/idioms.json` from the registry.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/idioms.jl#L284-L288" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/idioms.jl#L284-L288" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -368,7 +368,7 @@ idiom_builtin_gaps() -> (; undocumented, unimplemented)
 `unimplemented`: registry rows flagged `:ok`/`:partial` whose `builtin` is NOT in the code maps (the doc would be lying). `undocumented`: implemented builtins with no registry row. A healthy registry has an empty `unimplemented`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/idioms.jl#L223-L229" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/idioms.jl#L223-L229" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -387,7 +387,7 @@ LLMBackend
 Abstract supertype for optional LLM refinement backends. Concrete subtypes ([`HTTPBackend`](/api#Mjolnir.HTTPBackend), [`SubprocessBackend`](/api#Mjolnir.SubprocessBackend), [`ManualBackend`](/api#Mjolnir.ManualBackend), [`FunctionBackend`](/api#Mjolnir.FunctionBackend)) implement [`refine`](/api#Mjolnir.refine). Refinement is always **gated**: use [`gated_refine`](/api#Mjolnir.gated_refine), which keeps a candidate only if [`verify_equivalent`](/api#Mjolnir.verify_equivalent) proves it matches the deterministic baseline.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L16-L24" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L16-L24" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -399,7 +399,7 @@ Abstract supertype for optional LLM refinement backends. Concrete subtypes ([`HT
 In-process backend wrapping `f(prompt)::String` — used for testing and custom integrations.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L30" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L30" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -411,7 +411,7 @@ In-process backend wrapping `f(prompt)::String` — used for testing and custom 
 Manual round-trip backend — the path for **Claude via Copilot in VSCode** (not scriptable): writes the prompt to `promptfile`, expects the model response in `responsefile`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L36-L39" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L36-L39" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -423,7 +423,7 @@ Manual round-trip backend — the path for **Claude via Copilot in VSCode** (not
 Subprocess backend for a local CLI (e.g. llama.cpp / a Tonalli runner). `cmd` receives the prompt on stdin and writes the completion to stdout.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L51-L54" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L51-L54" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -435,7 +435,7 @@ Subprocess backend for a local CLI (e.g. llama.cpp / a Tonalli runner). `cmd` re
 HTTP backend for an Anthropic- or OpenAI-compatible chat endpoint. Covers **Claude** directly and a local **Ollama** server (OpenAI-compatible). See [`claude_backend`] / [`ollama_backend`].
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L64-L67" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L64-L67" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -447,7 +447,7 @@ HTTP backend for an Anthropic- or OpenAI-compatible chat endpoint. Covers **Clau
 Claude (Anthropic Messages API). `api_key` defaults to the ANTHROPIC_API_KEY env var.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L76" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L76" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -459,7 +459,7 @@ Claude (Anthropic Messages API). `api_key` defaults to the ANTHROPIC_API_KEY env
 Local Ollama server (OpenAI-compatible chat endpoint).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L83" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L83" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -471,7 +471,7 @@ Local Ollama server (OpenAI-compatible chat endpoint).
 Ask `backend` to refine `code`; returns candidate source (not yet gated).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L136" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L136" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -488,7 +488,7 @@ gated_refine(backend, baseline; probes, kwargs...) -> (; code, accepted)
 Refine `baseline` with `backend`, then accept the candidate **only if** it is behaviorally equivalent to `baseline` on `probes`; otherwise return `baseline` unchanged. Any backend/parse error falls back to the baseline. This is the guarantee: refinement never changes behavior.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L177-L183" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L177-L183" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -505,7 +505,7 @@ verify_equivalent(baseline, candidate, probes; atol, rtol) -> Bool
 True if `candidate` reproduces `baseline` on every probe expression (e.g. `"f(2)"`, `"f(3.5)"`) evaluated in a fresh module. A candidate that errors or disagrees is not equivalent.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L156-L161" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L156-L161" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -517,7 +517,7 @@ True if `candidate` reproduces `baseline` on every probe expression (e.g. `"f(2)
 Extract the first ```julia fenced block (or the trimmed whole text if none).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/2d32dd59d93f19b69bd986d020d3f1d14cf8aa8e/src/llm.jl#L130" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/el-oso/Mjolnir.jl/blob/7b86ab71fbe5b6a1f22a9e398d55ac4ef56198b0/src/llm.jl#L130" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
