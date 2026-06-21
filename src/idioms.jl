@@ -120,7 +120,8 @@ const IDIOMS = Idiom[
     Idiom("Linear algebra & arrays", "eig(A)", "eigvals(A)", builtin = :eig, status = :partial, notes = "LinearAlgebra; [V,D]=eig needs eigen()"),
     Idiom("Constructors & builtins", "plot/stem/bar/scatter/xlabel/...", "Plots.plot/sticks/bar/.../xlabel!/...", status = :partial, notes = "Plots.jl; stateful subplot/figure/hold/legend semantics are best-effort (subplot/figure still pass through)"),
     Idiom("Constructors & builtins", "fminsearch/fminunc", "Optim.minimizer(Optim.optimize(f, x0))", builtin = :fminsearch, status = :partial, notes = "Optim.jl (unconstrained); use JuMP/Convex/MathOptInterface for constrained (linprog/quadprog) — TODO"),
-    Idiom("Constructors & builtins", "conv/filter/butter/freqz (DSP toolbox)", "—", status = :todo, notes = "map to DSP.jl in a future batch"),
+    Idiom("Constructors & builtins", "conv/conv2/filter/freqz/xcorr (DSP toolbox)", "DSP.conv/DSP.filt/...", builtin = :conv, status = :partial, notes = "DSP.jl; butter/fir filter-design APIs differ -> TODO"),
+    Idiom("Constructors & builtins", "tf/ss/step/bode/lsim/c2d/feedback/pole (Control toolbox)", "ControlSystems.tf/ss/...", builtin = :tf, status = :partial, notes = "ControlSystems.jl; pole->poles; step/bode return objects, not [y,t]"),
     Idiom("Constructors & builtins", "syms / symbolic math", "—", status = :todo, notes = "Symbolic Toolbox; would need Symbolics.jl"),
     Idiom("Literals & types", "... (line continuation)", "(transparent)", notes = "ignored, as in MATLAB"),
 

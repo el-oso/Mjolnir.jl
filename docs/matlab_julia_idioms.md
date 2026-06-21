@@ -83,7 +83,8 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `cell(n)` | `Array{Any}(undef, n, n)` |  |
 | 🟡 | `plot/stem/bar/scatter/xlabel/...` | `Plots.plot/sticks/bar/.../xlabel!/...` | Plots.jl; stateful subplot/figure/hold/legend semantics are best-effort (subplot/figure still pass through) |
 | 🟡 | `fminsearch/fminunc` | `Optim.minimizer(Optim.optimize(f, x0))` | Optim.jl (unconstrained); use JuMP/Convex/MathOptInterface for constrained (linprog/quadprog) — TODO |
-| ⬜ | `conv/filter/butter/freqz (DSP toolbox)` | `—` | map to DSP.jl in a future batch |
+| 🟡 | `conv/conv2/filter/freqz/xcorr (DSP toolbox)` | `DSP.conv/DSP.filt/...` | DSP.jl; butter/fir filter-design APIs differ -> TODO |
+| 🟡 | `tf/ss/step/bode/lsim/c2d/feedback/pole (Control toolbox)` | `ControlSystems.tf/ss/...` | ControlSystems.jl; pole->poles; step/bode return objects, not [y,t] |
 | ⬜ | `syms / symbolic math` | `—` | Symbolic Toolbox; would need Symbolics.jl |
 
 ## Linear algebra & arrays

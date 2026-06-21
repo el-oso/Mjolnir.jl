@@ -316,6 +316,12 @@ end
         # fft -> FFTW
         rfft = convert_matlab("y = fft(x);\n"; wrap_script = false)
         @test occursin("fft(x)", rfft.julia) && (:FFTW in rfft.imports)
+        # DSP toolbox -> DSP.jl
+        rdsp = convert_matlab("y = conv(a, b);\nz = filter(bb, aa, x);\n"; wrap_script = false)
+        @test occursin("DSP.conv(a, b)", rdsp.julia) && occursin("DSP.filt(", rdsp.julia) && (:DSP in rdsp.imports)
+        # Control toolbox -> ControlSystems.jl
+        rcs = convert_matlab("s = tf(n, d);\np = pole(s);\n"; wrap_script = false)
+        @test occursin("ControlSystems.tf(n, d)", rcs.julia) && occursin("ControlSystems.poles(s)", rcs.julia)
         # Julia reserved-word identifiers are sanitized (e.g. a variable named `const`)
         kw = convert_matlab("const = 5;\ny = const + 1;\n"; wrap_script = false).julia
         @test occursin("const_ = 5", kw) && occursin("const_ + 1", kw)

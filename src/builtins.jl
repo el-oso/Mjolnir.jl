@@ -28,6 +28,11 @@ const IDENT_MAP = Dict{Symbol, Any}(
 
 _bcast(f::Symbol, args) = Expr(:., f, Expr(:tuple, args...))
 
+# Map a MATLAB toolbox function to `Mod.fn(args...)` and record the package as a needed import.
+# Qualified (not bare) to avoid clashing with Base names like `step`/`filter`.
+_pkg(mod::Symbol, fn::Symbol) =
+    (ctx, a) -> (push!(ctx.imports, mod); Expr(:call, Expr(:., mod, QuoteNode(fn)), a...))
+
 # MATLAB interprets backslash escapes inside (s/f)printf format strings; Julia's @printf takes a
 # real string literal, so turn `\n`/`\t`/… into the actual characters in the (literal) format arg.
 _unescape_printf(s::AbstractString) =
@@ -164,6 +169,16 @@ const SPECIAL = Dict{Symbol, Function}(
     :ifft => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :ifft, a...)),
     :fftshift => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :fftshift, a...)),
     :ifftshift => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :ifftshift, a...)),
+    # --- DSP toolbox -> DSP.jl ---
+    :conv => _pkg(:DSP, :conv), :conv2 => _pkg(:DSP, :conv),
+    :filter => _pkg(:DSP, :filt), :freqz => _pkg(:DSP, :freqz), :xcorr => _pkg(:DSP, :xcorr),
+    # --- Control System toolbox -> ControlSystems.jl (APIs differ in places -> partial) ---
+    :tf => _pkg(:ControlSystems, :tf), :ss => _pkg(:ControlSystems, :ss),
+    :step => _pkg(:ControlSystems, :step), :impulse => _pkg(:ControlSystems, :impulse),
+    :bode => _pkg(:ControlSystems, :bode), :nyquist => _pkg(:ControlSystems, :nyquist),
+    :lsim => _pkg(:ControlSystems, :lsim), :c2d => _pkg(:ControlSystems, :c2d),
+    :feedback => _pkg(:ControlSystems, :feedback), :pole => _pkg(:ControlSystems, :poles),
+    :dcgain => _pkg(:ControlSystems, :dcgain),
     :nchoosek => (ctx, a) -> Expr(:call, :binomial, a...),
     # MATLAB set ops return sorted unique results; Julia's don't sort -> wrap in sort.
     :intersect => (ctx, a) -> Expr(:call, :sort, Expr(:call, :intersect, a...)),
