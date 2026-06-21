@@ -352,6 +352,14 @@ end
         @test occursin("eigvals(A)", convert_matlab("e = eig(A);\n"; wrap_script = false).julia)
     end
 
+    @testset "empty blocks don't crash (if/for/while/try with no body)" begin
+        for s in ("if x\nend\n", "for i = 1:n\nend\n", "while c\nend\n", "if x\nelse\nend\n", "try\nend\n")
+            @test convert_matlab(s; wrap_script = false) isa ConvertResult
+        end
+        out = convert_matlab("function y = f(x)\n  if x > 0\n  end\n  y = 1;\nend\n").julia
+        @test occursin("if x", out)
+    end
+
     @testset "switch / try-catch / early return" begin
         sw = convert_matlab("function y = f(x)\n  switch x\n    case 1\n      y = 10;\n    case {2,3}\n      y = 20;\n    otherwise\n      y = 0;\n  end\nend\n").julia
         @test occursin("if x == 1", sw)

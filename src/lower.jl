@@ -408,6 +408,7 @@ _append_stmt!(stmts, ::Nothing) = stmts
 _append_stmt!(stmts, s) = (push!(stmts, s); stmts)
 _append_stmt!(stmts, ss::Vector) = (append!(stmts, ss); stmts)
 
+lower_block(::Ctx, ::Nothing) = Expr(:block)   # empty body (e.g. `if x\nend`)
 function lower_block(ctx::Ctx, blk::CSTNode)
     stmts = Any[]
     for c in _named(blk)
