@@ -442,9 +442,11 @@ function lower_stmt(ctx::Ctx, n::CSTNode)
         return lower_try(ctx, n)
     elseif k === :comment
         return nothing
-    elseif k === :persistent_operator || k === :global_operator
-        kw = k === :persistent_operator ? "persistent" : "global"
-        push!(ctx.todos, "dropped `$kw` declaration (no direct Julia equivalent; use a Ref/closure)")
+    elseif k === :global_operator                        # `global x y` -> shared module-level state
+        names = [_idsym(ctx, id) for id in _childrenkind(n, :identifier)]
+        return isempty(names) ? nothing : Expr(:global, names...)
+    elseif k === :persistent_operator
+        push!(ctx.todos, "dropped `persistent` declaration (no direct Julia equivalent; use a Ref/closure)")
         return nothing
     elseif k === :command
         nm = _childkind(n, :command_name)

@@ -418,6 +418,18 @@ end
         @test (nv.x, nv.y) == (-1.0, -2.0)
     end
 
+    @testset "global declarations -> shared module-level state" begin
+        jl = convert_matlab("function increment()\n  global counter\n  counter = counter + 1;\nend\n").julia
+        @test occursin("global counter", jl)
+        mod = Module()
+        Base.include_string(mod, jl)
+        Base.include_string(mod, "counter = 0")
+        for _ in 1:3
+            Base.invokelatest(getfield(mod, :increment))
+        end
+        @test getfield(mod, :counter) == 3
+    end
+
     @testset "obj.property(i) indexes the property, not a method call" begin
         src = "classdef Box\n  properties\n    data\n  end\n  methods\n" *
             "    function obj = Box(d)\n      obj.data = d;\n    end\n" *

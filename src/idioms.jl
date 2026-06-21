@@ -188,6 +188,7 @@ const IDIOMS = Idiom[
     Idiom("classdef", "subsref / subsasgn (custom () {} . indexing)", "—", status = :todo, notes = "MATLAB substruct protocol (s.type/s.subs dispatch) not modeled"),
     Idiom("Strings, conversions & maps", "cell content-index c{i} / c{:} / [c{:}] / f(c{:})", "c[i] / splat c... / [c...] / f(c...)", notes = "{} is getindex; c{:} is a comma-separated list -> splat. c{i}(j) after a brace stays a call (computed-callee ambiguity)"),
     Idiom("Control flow & functions", "[~, x] = f(...)", "(_, x) = ...", notes = "~ ignored-output placeholder kept in position"),
+    Idiom("Control flow & functions", "global x y", "global x, y (shared module-level state)", notes = "persistent still dropped (function-static; needs a Ref/closure)"),
     Idiom("Control flow & functions", "[m,i]=max(v) / [m,i]=min(v) / [s,p]=sort(v)", "findmax / findmin / (sort(v), sortperm(v))", notes = "output-arity-dependent; vector index is Int (matrix max index -> CartesianIndex differs)"),
     Idiom("classdef", "classdef C < S", "abstract type AbstractC <: AbstractS", status = :partial, notes = "inheritance only when S converted in the same unit"),
     Idiom("classdef", "struct arrays / events / Access= attrs", "—", status = :todo),
