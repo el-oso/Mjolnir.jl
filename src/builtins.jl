@@ -141,6 +141,11 @@ const SPECIAL = Dict{Symbol, Function}(
     :diag => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :diag, a...)),
     :transpose => (ctx, a) -> Expr(:call, :transpose, a...),
     :kron => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :kron, a...)),
+    # --- FFT (FFTW; names match MATLAB) ---
+    :fft => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :fft, a...)),
+    :ifft => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :ifft, a...)),
+    :fftshift => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :fftshift, a...)),
+    :ifftshift => (ctx, a) -> (push!(ctx.imports, :FFTW); Expr(:call, :ifftshift, a...)),
     :nchoosek => (ctx, a) -> Expr(:call, :binomial, a...),
     # MATLAB set ops return sorted unique results; Julia's don't sort -> wrap in sort.
     :intersect => (ctx, a) -> Expr(:call, :sort, Expr(:call, :intersect, a...)),

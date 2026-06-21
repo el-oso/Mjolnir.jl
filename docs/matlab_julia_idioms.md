@@ -17,6 +17,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `"text"` | `"text"` |  |
 | ✅ | `true / false` | `true / false` |  |
 | ✅ | `pi / Inf / NaN / eps / i,j` | `pi / Inf / NaN / eps() / im` | only when not shadowed by a variable |
+| ✅ | `... (line continuation)` | `(transparent)` | ignored, as in MATLAB |
 
 ## Operators
 
@@ -78,6 +79,9 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `size(x)` | `size(x)` | tuple vs vector; indexing compatible |
 | ✅ | `error(msg)` | `error(msg)` |  |
 | ✅ | `cell(n)` | `Array{Any}(undef, n, n)` |  |
+| ⬜ | `plot/stem/subplot/xlabel/... (plotting)` | `—` | passed through as calls + todo; mapping to a Julia plot backend is out of scope |
+| ⬜ | `conv/filter/butter/freqz (DSP toolbox)` | `—` | map to DSP.jl in a future batch |
+| ⬜ | `syms / symbolic math` | `—` | Symbolic Toolbox; would need Symbolics.jl |
 
 ## Linear algebra & arrays
 
@@ -99,6 +103,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `intersect/union/setdiff` | `sort(intersect/union/setdiff(…))` | MATLAB set ops are sorted |
 | ✅ | `ismember(a,b)` | `in.(a, Ref(b))` |  |
 | ✅ | `tril/triu` | `tril/triu` | LinearAlgebra |
+| ✅ | `fft/ifft/fftshift/ifftshift` | `fft/ifft/fftshift/ifftshift` | FFTW; names match |
 
 ## Strings, conversions & maps
 

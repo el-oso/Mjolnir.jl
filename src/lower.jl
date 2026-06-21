@@ -31,7 +31,8 @@ _childkind(n::CSTNode, k::Symbol) = (
     end; nothing
 )
 _childrenkind(n::CSTNode, k::Symbol) = filter(c -> c.kind === k, n.children)
-_named(n::CSTNode) = filter(c -> c.named, n.children)
+# Named children, minus `...` line-continuations (transparent; they're not real elements).
+_named(n::CSTNode) = filter(c -> c.named && c.kind !== :line_continuation, n.children)
 
 "Text of the operator token (first anonymous child)."
 function _optoken(ctx::Ctx, n::CSTNode)

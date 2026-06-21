@@ -114,6 +114,11 @@ const IDIOMS = Idiom[
     Idiom("Constructors & builtins", "error(msg)", "error(msg)", builtin = :error),
     Idiom("Constructors & builtins", "cell(n)", "Array{Any}(undef, n, n)", builtin = :cell),
     Idiom("Linear algebra & arrays", "tril/triu", "tril/triu", builtin = :tril, notes = "LinearAlgebra"),
+    Idiom("Linear algebra & arrays", "fft/ifft/fftshift/ifftshift", "fft/ifft/fftshift/ifftshift", builtin = :fft, notes = "FFTW; names match"),
+    Idiom("Constructors & builtins", "plot/stem/subplot/xlabel/... (plotting)", "—", status = :todo, notes = "passed through as calls + todo; mapping to a Julia plot backend is out of scope"),
+    Idiom("Constructors & builtins", "conv/filter/butter/freqz (DSP toolbox)", "—", status = :todo, notes = "map to DSP.jl in a future batch"),
+    Idiom("Constructors & builtins", "syms / symbolic math", "—", status = :todo, notes = "Symbolic Toolbox; would need Symbolics.jl"),
+    Idiom("Literals & types", "... (line continuation)", "(transparent)", notes = "ignored, as in MATLAB"),
 
     # --- Strings, conversions & maps ---
     Idiom("Strings, conversions & maps", "strcmp(a,b)", "a == b", builtin = :strcmp),

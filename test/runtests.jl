@@ -311,6 +311,11 @@ end
         @test occursin("tril(", convert_matlab("L = tril(A);\n"; wrap_script = false).julia)
         @test occursin("Array{Any}(undef", convert_matlab("c = cell(3);\n"; wrap_script = false).julia)
         @test any(t -> occursin("dropped MATLAB command", t), convert_matlab("clc;\n").todos)
+        # line continuation `...` is transparent
+        @test occursin("x = 1 + 2", convert_matlab("x = 1 + ...\n  2;\n"; wrap_script = false).julia)
+        # fft -> FFTW
+        rfft = convert_matlab("y = fft(x);\n"; wrap_script = false)
+        @test occursin("fft(x)", rfft.julia) && (:FFTW in rfft.imports)
     end
 
     @testset "loop -> comprehension (and refusal when cumulative)" begin
