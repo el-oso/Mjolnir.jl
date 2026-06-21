@@ -13,7 +13,7 @@ makedocs(;
     sitename = "Mjolnir.jl",
     repo = Remotes.GitHub("el-oso", "Mjolnir.jl"),
     format = DocumenterVitepress.MarkdownVitepress(;
-        repo = "https://github.com/el-oso/Mjolnir.jl",
+        repo = "github.com/el-oso/Mjolnir.jl",
         devbranch = "main",
         devurl = "dev",
     ),
@@ -29,7 +29,10 @@ makedocs(;
     warnonly = true,
 )
 
-deploydocs(;
+# Use DocumenterVitepress.deploydocs (NOT Documenter.deploydocs): it assembles the VitePress
+# final_site and moves the numbered base folder into the version dir. Plain Documenter.deploydocs
+# ships the raw build/ intermediate -> site lands in dev/1/ and the root redirect 404s.
+DocumenterVitepress.deploydocs(;
     repo = "github.com/el-oso/Mjolnir.jl",
     devbranch = "main",
     push_preview = true,
