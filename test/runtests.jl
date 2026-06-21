@@ -418,6 +418,19 @@ end
         @test (nv.x, nv.y) == (-1.0, -2.0)
     end
 
+    @testset "obj.property(i) indexes the property, not a method call" begin
+        src = "classdef Box\n  properties\n    data\n  end\n  methods\n" *
+            "    function obj = Box(d)\n      obj.data = d;\n    end\n" *
+            "    function v = at(obj, k)\n      v = obj.data(k);\n    end\n  end\nend\n"
+        jl = convert_matlab(src).julia
+        @test occursin("v = obj.data[k]", jl)
+        mod = Module()
+        Base.include_string(mod, jl)
+        B = getfield(mod, :Box)
+        b = Base.invokelatest(B, [10.0, 20.0, 30.0])
+        @test Base.invokelatest(getfield(mod, :at), b, 2) == 20.0
+    end
+
     @testset "classdef disp/display -> Base.show (e2e display integration)" begin
         src = "classdef P\n  properties\n    x\n  end\n  methods\n" *
             "    function obj = P(v)\n      obj.x = v;\n    end\n" *

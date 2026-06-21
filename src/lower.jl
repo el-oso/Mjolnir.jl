@@ -14,6 +14,7 @@ struct Ctx
     in_method::Base.RefValue{Bool}   # true while lowering classdef method/ctor bodies
     structs_seen::Set{Symbol}        # struct vars already initialized (incremental field build)
     callables::Set{Symbol}           # vars assigned a function handle -> `f(x)` stays a call
+    cur_props::Set{Symbol}           # property names of the class whose methods we're lowering
 end
 
 # ---------------------------------------------------------------------------------------
@@ -245,8 +246,15 @@ function lower_expr(ctx::Ctx, n::CSTNode)
             if objnode.kind === :identifier && nodetext(ctx.cst, objnode) == "containers" && fname === :Map
                 return lower_containers_map(ctx, fldnode)
             end
-            # method-call syntax obj.method(args) -> method(obj, args...)
             an = _childkind(fldnode, :arguments)
+            brace = any(c -> c.kind === Symbol("{"), fldnode.children)
+            # `obj.prop(i)` / `obj.prop{i}` where prop is a class property -> index the property.
+            if objnode.kind === :identifier && fname in ctx.cur_props
+                idx = an === nothing ? Any[] : map(c -> _as_index(lower_expr(ctx, c)), _named(an))
+                fref = Expr(:., lower_expr(ctx, objnode), QuoteNode(fname))
+                return Expr(:ref, fref, idx...)
+            end
+            # method-call syntax obj.method(args) -> method(obj, args...)
             margs = an === nothing ? Any[] : map(c -> lower_expr(ctx, c), _named(an))
             return Expr(:call, fname, lower_expr(ctx, objnode), margs...)
         end
@@ -818,10 +826,14 @@ function lower_class(ctx::Ctx, n::CSTNode)
         push!(body, ctor === nothing ? _default_ctor(cname, fields) : _lower_ctor(ctx, ctor, cname))
         push!(out, Expr(:struct, true, Expr(:<:, cname, absname), Expr(:block, body...)))
 
-        # methods as outer functions, dispatching on the concrete type
+        # methods as outer functions, dispatching on the concrete type. Track property names so
+        # `obj.prop(i)` lowers as indexing (`obj.prop[i]`), not a `prop(obj, i)` method call.
+        empty!(ctx.cur_props)
+        union!(ctx.cur_props, (f[1] for f in fields))
         for m in methods
             push!(out, _lower_method(ctx, m, cname))
         end
+        empty!(ctx.cur_props)
     finally
         ctx.in_method[] = false
     end

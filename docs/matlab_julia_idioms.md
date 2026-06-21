@@ -188,6 +188,8 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `method function r = m(obj,...)` | `function m(obj::C, ...)` |  |
 | ✅ | `operator methods plus/minus/mtimes/eq/lt/uminus/transpose/horzcat/...` | `extend Base.:+ / :- / :* / :(==) / :< / unary :- / transpose / hcat ...` | so a+b, a==b, -a, a' dispatch; elementwise times/rdivide/power left as plain methods (route via *) |
 | ✅ | `disp(obj) / display(obj)` | `Base.show(io::IO, obj::C)` | io injected; body prints redirected (fprintf -> @printf io, disp -> println(io,…)); integrates with print/string/REPL |
+| ✅ | `obj.prop(i) where prop is a property` | `obj.prop[i] (index), not prop(obj, i)` | tracked property names distinguish indexed-property access from method calls |
+| ⬜ | `subsref / subsasgn (custom () {} . indexing)` | `—` | MATLAB substruct protocol (s.type/s.subs dispatch) not modeled |
 | 🟡 | `classdef C < S` | `abstract type AbstractC <: AbstractS` | inheritance only when S converted in the same unit |
 | ⬜ | `struct arrays / events / Access= attrs` | `—` |  |
 

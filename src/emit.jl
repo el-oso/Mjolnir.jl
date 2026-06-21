@@ -63,7 +63,7 @@ function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = t
     cst = parse_matlab(src)
     ctx = Ctx(
         cst, collect_vars(cst), String[], Set{Symbol}(), collect_classes(cst),
-        Ref(false), Set{Symbol}(), collect_callables(cst)
+        Ref(false), Set{Symbol}(), collect_callables(cst), Set{Symbol}()
     )
     if cst.has_error
         push!(ctx.todos, "parse error: input contains MATLAB syntax the grammar could not parse (output may be incomplete)")
