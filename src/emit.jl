@@ -58,7 +58,10 @@ Convert MATLAB source text to Julia. With `modulename`, the output is wrapped in
 """
 function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = true, wrap_script = true)
     cst = parse_matlab(src)
-    ctx = Ctx(cst, collect_vars(cst), String[], Set{Symbol}(), collect_classes(cst), Ref(false), Set{Symbol}())
+    ctx = Ctx(
+        cst, collect_vars(cst), String[], Set{Symbol}(), collect_classes(cst),
+        Ref(false), Set{Symbol}(), collect_callables(cst)
+    )
     if cst.has_error
         push!(ctx.todos, "parse error: input contains MATLAB syntax the grammar could not parse (output may be incomplete)")
     end

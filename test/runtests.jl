@@ -297,6 +297,22 @@ end
         @test occursin("sort(intersect(", convert_matlab("i = intersect(a, b);\n"; wrap_script = false).julia)
         @test occursin("in.(a, Ref(b))", convert_matlab("m = ismember(a, b);\n"; wrap_script = false).julia)
     end
+    @testset "function handles, commands, misc builtins" begin
+        @test occursin("x->x ^ 2", convert_matlab("g = @(x) x^2;\n"; wrap_script = false).julia)
+        @test occursin("h = sin", convert_matlab("h = @sin;\n"; wrap_script = false).julia)
+        # function-handle parameter: f used only as f(...) -> stays a call
+        hp = convert_matlab("function r = ap(f, x)\n  r = f(x);\nend\n").julia
+        @test occursin("f(x)", hp) && !occursin("f[x]", hp)
+        # read-only array parameter (also sized) -> stays indexing
+        ap = convert_matlab("function y = g(a)\n  n = numel(a);\n  y = a(1) + n;\nend\n").julia
+        @test occursin("a[1]", ap)
+        @test occursin("size(", convert_matlab("s = size(A);\n"; wrap_script = false).julia)
+        @test occursin("error(", convert_matlab("error('boom');\n"; wrap_script = false).julia)
+        @test occursin("tril(", convert_matlab("L = tril(A);\n"; wrap_script = false).julia)
+        @test occursin("Array{Any}(undef", convert_matlab("c = cell(3);\n"; wrap_script = false).julia)
+        @test any(t -> occursin("dropped MATLAB command", t), convert_matlab("clc;\n").todos)
+    end
+
     @testset "loop -> comprehension (and refusal when cumulative)" begin
         comp = convert_matlab("function y = f(n)\n  y = zeros(1, n);\n  for i = 1:n\n    y(i) = i^2;\n  end\nend\n").julia
         @test occursin("y = [i ^ 2 for i = 1:n]", comp)
@@ -518,6 +534,8 @@ end
             ("set ops (sorted)", "i = intersect([1 2 3 4], [2 4 6]);\nu = union([1 2], [2 3]);\nd = setdiff([1 2 3], [2]);\n", ["i", "u", "d"]),
             # loop -> comprehension, runtime-equivalent
             ("comprehension", "1;\nfunction y = sq(n)\n  y = zeros(1, n);\n  for i = 1:n\n    y(i) = i^2;\n  end\nend\nr = sq(4);\n", ["r"]),
+            # function handle (lambda) passed as a parameter and called
+            ("function handle param", "1;\nfunction r = applyf(f, x)\n  r = f(x) + 1;\nend\ny = applyf(@(z) z^2, 3);\n", ["y"]),
             # linear algebra & arrays
             ("norm & dot", "v = [3 4];\nn = norm(v);\nd = dot([1 2 3], [4 5 6]);\n", ["n", "d"]),
             ("trace & det", "A = [1 2; 3 4];\nt = trace(A);\ne = det(A);\n", ["t", "e"]),

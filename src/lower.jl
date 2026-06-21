@@ -13,6 +13,7 @@ struct Ctx
     classes::Set{Symbol}
     in_method::Base.RefValue{Bool}   # true while lowering classdef method/ctor bodies
     structs_seen::Set{Symbol}        # struct vars already initialized (incremental field build)
+    callables::Set{Symbol}           # vars assigned a function handle -> `f(x)` stays a call
 end
 
 # ---------------------------------------------------------------------------------------
@@ -71,6 +72,24 @@ function collect_vars(cst::MatlabCST)
         end
     end
     return vars
+end
+
+# Variables assigned a function handle (`f = @(x)…` or `f = @name`) so that later `f(x)` is
+# lowered as a call, not array indexing. (Function-handle *parameters* remain ambiguous and are
+# still treated as indexing — a documented limitation; MATLAB resolves call-vs-index at runtime.)
+function collect_callables(cst::MatlabCST)
+    callables = Set{Symbol}()
+    walk(cst) do n
+        if n.kind === :assignment
+            left = _field(n, :left)
+            right = _field(n, :right)
+            if left !== nothing && left.kind === :identifier && right !== nothing &&
+                    (right.kind === :lambda || right.kind === :handle_operator)
+                push!(callables, Symbol(nodetext(cst, left)))
+            end
+        end
+    end
+    return callables
 end
 
 function collect_classes(cst::MatlabCST)
@@ -197,6 +216,14 @@ function lower_expr(ctx::Ctx, n::CSTNode)
             return Expr(:call, fname, lower_expr(ctx, objnode), margs...)
         end
         return Expr(:., lower_expr(ctx, objnode), QuoteNode(Symbol(nodetext(ctx.cst, fldnode))))
+    elseif k === :lambda                                 # @(x) expr  ->  x -> expr
+        argsnode = _childkind(n, :arguments)
+        ps = argsnode === nothing ? Symbol[] : [_idsym(ctx, a) for a in _childrenkind(argsnode, :identifier)]
+        bodyexpr = lower_expr(ctx, _field(n, :expression))
+        sig = length(ps) == 1 ? ps[1] : Expr(:tuple, ps...)
+        return Expr(:->, sig, bodyexpr)
+    elseif k === :handle_operator                        # @name  ->  name (function reference)
+        return lower_expr(ctx, _named(n)[1])
     elseif k === :end_keyword
         return Symbol("end")
     elseif k === :spread_operator
@@ -247,9 +274,15 @@ end
 
 function lower_call_or_index(ctx::Ctx, n::CSTNode)
     namenode = _field(n, :name)
-    name = Symbol(nodetext(ctx.cst, namenode))
     argsnode = _childkind(n, :arguments)
     args = argsnode === nothing ? Any[] : map(c -> lower_expr(ctx, c), _named(argsnode))
+    if namenode.kind !== :identifier                  # computed callee, e.g. f{j}(x) -> (f[j])(x)
+        return Expr(:call, lower_expr(ctx, namenode), args...)
+    end
+    name = Symbol(nodetext(ctx.cst, namenode))
+    if name in ctx.callables                          # known function handle -> call
+        return Expr(:call, name, args...)
+    end
     if name in ctx.vars
         return Expr(:ref, name, args...)              # array indexing (1-based in both)
     end
@@ -331,6 +364,10 @@ function lower_stmt(ctx::Ctx, n::CSTNode)
         return Expr(:continue)
     elseif k === :comment
         return nothing
+    elseif k === :command
+        nm = _childkind(n, :command_name)
+        push!(ctx.todos, "dropped MATLAB command: $(nm === nothing ? "?" : nodetext(ctx.cst, nm))")
+        return nothing                                   # clc/format/hold/... have no Julia equivalent
     else
         push!(ctx.todos, "unhandled statement node: $k")
         return nothing
@@ -448,12 +485,48 @@ _uses_sym(e::Symbol, s) = e === s
 _uses_sym(e::Expr, s) = any(a -> _uses_sym(a, s), e.args)
 _uses_sym(::Any, s) = false
 
+# Call-like args = no colon/range/end (those mark indexing, not a function call).
+function _calllike_args(nd::CSTNode)
+    an = _childkind(nd, :arguments)
+    an === nothing && return true
+    return !any(a -> a.kind in (:spread_operator, :range, :end_keyword), _named(an))
+end
+
+# Heuristic: a parameter that appears in the body ONLY as a call-like callee `p(...)` (never in
+# arithmetic, never indexed-assigned, never with colon/range args) is a function handle, so its
+# calls must stay calls — not `p[...]`. This recovers the common numerical pattern `f(x)`.
+function _callonly_params(ctx::Ctx, blk, params)
+    isempty(params) && return Symbol[]
+    pset = Set(params)
+    total = Dict(p => 0 for p in params)
+    callish = Dict(p => 0 for p in params)
+    walk(blk) do nd
+        if nd.kind === :identifier
+            s = Symbol(nodetext(ctx.cst, nd))
+            s in pset && (total[s] += 1)
+        elseif nd.kind === :function_call
+            nm = _field(nd, :name)
+            if nm !== nothing && nm.kind === :identifier
+                s = Symbol(nodetext(ctx.cst, nm))
+                (s in pset && _calllike_args(nd)) && (callish[s] += 1)
+            end
+        end
+    end
+    return [p for p in params if callish[p] >= 1 && total[p] == callish[p]]
+end
+
 function lower_function(ctx::Ctx, n::CSTNode)
     fname = _idsym(ctx, _field(n, :name))
     argsnode = _childkind(n, :function_arguments)
     params = argsnode === nothing ? Symbol[] :
         [_idsym(ctx, a) for a in _childrenkind(argsnode, :identifier)]
-    body = lower_block(ctx, _childkind(n, :block))
+
+    # Function-handle parameters: add to callables for the duration of this body's lowering.
+    blk = _childkind(n, :block)
+    added = setdiff(_callonly_params(ctx, blk, params), ctx.callables)
+    union!(ctx.callables, added)
+    body = lower_block(ctx, blk)
+    setdiff!(ctx.callables, added)
 
     # varargin -> a Julia varargs parameter `varargin...`
     has_vararg = !isempty(params) && params[end] === :varargin

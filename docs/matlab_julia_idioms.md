@@ -75,6 +75,9 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `s.(f) (dynamic field)` | `getproperty(s, Symbol(f)) / merge(...)` | read + write |
 | 🟡 | `s(i).field (struct array)` | `s[i] = merge(s[i], (field=v,)) / s[i].field` | read works; build-from-scratch needs a preallocated Vector |
 | ✅ | `anything unmapped` | `name(args...) + todos entry` |  |
+| ✅ | `size(x)` | `size(x)` | tuple vs vector; indexing compatible |
+| ✅ | `error(msg)` | `error(msg)` |  |
+| ✅ | `cell(n)` | `Array{Any}(undef, n, n)` |  |
 
 ## Linear algebra & arrays
 
@@ -95,6 +98,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `kron(A,B)` | `kron(A, B)` | LinearAlgebra |
 | ✅ | `intersect/union/setdiff` | `sort(intersect/union/setdiff(…))` | MATLAB set ops are sorted |
 | ✅ | `ismember(a,b)` | `in.(a, Ref(b))` |  |
+| ✅ | `tril/triu` | `tril/triu` | LinearAlgebra |
 
 ## Strings, conversions & maps
 
@@ -121,6 +125,9 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | | MATLAB | Julia | Notes |
 |---|---|---|---|
 | ✅ | `preallocated index loop` | `comprehension  y = [rhs for i in r]` | recognized when body is y(i)=rhs, i the loop var, rhs independent of y |
+| ✅ | `@(x) expr  /  @name` | `x -> expr  /  name` | anonymous functions & function handles |
+| 🟡 | `function-handle parameter f(x)` | `f(x) (kept a call, not f[x])` | heuristic: a param used only as a call-like callee; a read-only array param sized only by indexing may misclassify (loud error, not silent) |
+| 🟡 | `command syntax (clc, format …)` | `dropped (no Julia equivalent)` | recorded as a todo |
 | ✅ | `if/elseif/else/end` | `if/elseif/else/end` |  |
 | ✅ | `for v = expr ... end` | `for v in expr ... end` |  |
 | ✅ | `while c ... end` | `while c ... end` |  |

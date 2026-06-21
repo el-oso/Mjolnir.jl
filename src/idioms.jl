@@ -107,6 +107,13 @@ const IDIOMS = Idiom[
     Idiom("Linear algebra & arrays", "intersect/union/setdiff", "sort(intersect/union/setdiff(…))", builtin = :intersect, notes = "MATLAB set ops are sorted"),
     Idiom("Linear algebra & arrays", "ismember(a,b)", "in.(a, Ref(b))", builtin = :ismember),
     Idiom("Control flow & functions", "preallocated index loop", "comprehension  y = [rhs for i in r]", notes = "recognized when body is y(i)=rhs, i the loop var, rhs independent of y"),
+    Idiom("Control flow & functions", "@(x) expr  /  @name", "x -> expr  /  name", notes = "anonymous functions & function handles"),
+    Idiom("Control flow & functions", "function-handle parameter f(x)", "f(x) (kept a call, not f[x])", status = :partial, notes = "heuristic: a param used only as a call-like callee; a read-only array param sized only by indexing may misclassify (loud error, not silent)"),
+    Idiom("Control flow & functions", "command syntax (clc, format …)", "dropped (no Julia equivalent)", status = :partial, notes = "recorded as a todo"),
+    Idiom("Constructors & builtins", "size(x)", "size(x)", builtin = :size, notes = "tuple vs vector; indexing compatible"),
+    Idiom("Constructors & builtins", "error(msg)", "error(msg)", builtin = :error),
+    Idiom("Constructors & builtins", "cell(n)", "Array{Any}(undef, n, n)", builtin = :cell),
+    Idiom("Linear algebra & arrays", "tril/triu", "tril/triu", builtin = :tril, notes = "LinearAlgebra"),
 
     # --- Strings, conversions & maps ---
     Idiom("Strings, conversions & maps", "strcmp(a,b)", "a == b", builtin = :strcmp),

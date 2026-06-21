@@ -28,6 +28,13 @@ const IDENT_MAP = Dict{Symbol, Any}(
 
 _bcast(f::Symbol, args) = Expr(:., f, Expr(:tuple, args...))
 
+# MATLAB interprets backslash escapes inside (s/f)printf format strings; Julia's @printf takes a
+# real string literal, so turn `\n`/`\t`/… into the actual characters in the (literal) format arg.
+_unescape_printf(s::AbstractString) =
+    replace(s, "\\n" => "\n", "\\t" => "\t", "\\r" => "\r", "\\\\" => "\\")
+_unescape_printf(x) = x
+_printf_args(a) = isempty(a) ? a : Any[_unescape_printf(a[1]), a[2:end]...]
+
 """
     lower_builtin(ctx, name, args) -> Expr
 
@@ -62,6 +69,14 @@ const SPECIAL = Dict{Symbol, Function}(
     # MATLAB length(x) = longest dimension (Julia `length` is the element count = MATLAB numel)
     :length => (ctx, a) -> Expr(:call, :maximum, Expr(:call, :size, a...)),
     :numel => (ctx, a) -> Expr(:call, :length, a...),
+    :size => (ctx, a) -> Expr(:call, :size, a...),       # works as-is (tuple vs vector; indexing ok)
+    :error => (ctx, a) -> Expr(:call, :error, a...),     # Julia has error()
+    :cell => (ctx, a) -> begin                           # cell(n)->n×n, cell(m,n)->m×n
+        dims = length(a) == 1 ? (a[1], a[1]) : Tuple(a)
+        Expr(:call, Expr(:curly, :Array, :Any), :undef, dims...)
+    end,
+    :tril => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :tril, a...)),
+    :triu => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :triu, a...)),
     :repmat => (ctx, a) -> Expr(:call, :repeat, a...),
     :disp => (ctx, a) -> Expr(:call, :println, a...),
     :find => (ctx, a) -> Expr(:call, :findall, Expr(:call, :!, :iszero), a...),
@@ -88,11 +103,11 @@ const SPECIAL = Dict{Symbol, Function}(
     :endsWith => (ctx, a) -> Expr(:call, :endswith, a...),
     :sprintf => (ctx, a) -> begin
         push!(ctx.imports, :Printf)
-        Expr(:macrocall, Expr(:., :Printf, QuoteNode(Symbol("@sprintf"))), nothing, a...)
+        Expr(:macrocall, Expr(:., :Printf, QuoteNode(Symbol("@sprintf"))), nothing, _printf_args(a)...)
     end,
     :fprintf => (ctx, a) -> begin
         push!(ctx.imports, :Printf)
-        Expr(:macrocall, Expr(:., :Printf, QuoteNode(Symbol("@printf"))), nothing, a...)
+        Expr(:macrocall, Expr(:., :Printf, QuoteNode(Symbol("@printf"))), nothing, _printf_args(a)...)
     end,
     # --- struct introspection (NamedTuples) ---
     :fieldnames => (ctx, a) -> Expr(:call, :collect, Expr(:., :string, Expr(:tuple, Expr(:call, :keys, a[1])))),
