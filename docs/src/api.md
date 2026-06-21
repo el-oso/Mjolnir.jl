@@ -52,6 +52,7 @@ idiom_builtin_gaps
 ```@docs
 conversion_report
 conversion_report_json
+replay_report
 ```
 
 ## LLM refinement

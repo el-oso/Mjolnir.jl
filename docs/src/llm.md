@@ -1,5 +1,11 @@
 # LLM refinement (optional, gated)
 
+!!! warning "Under development"
+    LLM refinement is **experimental and under active development**. The backend interface and the
+    gated-equivalence harness exist, but the *model* story is unsettled — we are still deciding how
+    to train and run a small local model (no Python in the loop) versus calling a remote model.
+    Treat this stage as a preview; the deterministic pipeline is the supported path.
+
 Mjolnir's deterministic passes produce correct, reasonably idiomatic Julia on their own. An
 **optional** stage can ask an LLM to polish a unit further — but the result is **refactor-only and
 gated**: a candidate is accepted only if it is proven behaviorally equivalent to the deterministic

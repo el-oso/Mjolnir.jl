@@ -23,7 +23,7 @@ makedocs(;
         "Getting started" => "getting_started.md",
         "How it works" => "guide.md",
         "Idiom map" => "idioms.md",
-        "LLM refinement" => "llm.md",
+        "LLM refinement (experimental)" => "llm.md",
         "API reference" => "api.md",
     ],
     warnonly = true,

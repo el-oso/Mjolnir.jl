@@ -452,6 +452,11 @@ end
         @test any(t -> occursin("unmapped", t), rep["todos"])   # the proprietary call, anonymized
         # resilient: problematic input still produces a report (does not throw out)
         @test conversion_report("a = 1;\nb = mystery(a);\nc = a + 1;\n") isa Dict
+        # replay: the IP-free reproducer re-triggers the same problem without the source
+        rep = conversion_report("function r = f(x)\n  r = helperFn(x) + 1;\nend\n")
+        @test !occursin("helperFn", rep["reproducer"]) && !occursin("f(", rep["reproducer"])
+        rep2 = replay_report(rep)
+        @test rep["todos"] == rep2["todos"]   # same anonymized "unmapped function" todo
     end
 
     @testset "obj.property(i) indexes the property, not a method call" begin

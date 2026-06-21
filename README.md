@@ -73,8 +73,10 @@ The exact, normative translation rules live in the
   multiple dispatch for `classdef`, NamedTuples for structs, de-broadcasting where shapes allow.
 - **Correctness is gated by a differential oracle** — every snippet is run in real **Octave**
   (and optionally MATLAB) and compared against the converted Julia.
-- **Optional, gated LLM polish** — a refactor-only refinement that is accepted only if it stays
-  behaviorally identical (Claude / Ollama / local CLI / Copilot backends).
+- **Optional, gated LLM polish** *(experimental, under development)* — a refactor-only refinement
+  accepted only if it stays behaviorally identical (Claude / Ollama / local CLI / Copilot backends).
+  The model story (small local model vs. remote) is still being figured out; the deterministic
+  pipeline is the supported path.
 
 ## The name (and fallbacks)
 

@@ -50,6 +50,11 @@ variable/function names with `idN` placeholders, strips string/number literals, 
 names from messages and todos. MATLAB keywords and recognized builtins are kept verbatim (public
 API, not your IP), so the maintainer can reproduce and fix the issue from structure alone.
 
+The report also carries a synthetic, IP-free `reproducer` (the structure un-parsed back to MATLAB
+with placeholder names and dummy literals). A maintainer runs `replay_report(report)` (or
+`convert_matlab(report["reproducer"])`) to reproduce the problem locally without the original
+source.
+
 ## Coverage
 
 Mjolnir has been shaken down against real open-source MATLAB across many domains — numerical

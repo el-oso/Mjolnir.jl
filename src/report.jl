@@ -116,8 +116,14 @@ function conversion_report(src::AbstractString)
         )
     end
 
+    reproducer = let io = IOBuffer()
+        _repro(io, cst, cst.root, a, known)     # reuse `a` -> placeholders match the skeleton
+        strip(String(take!(io)))
+    end
+
     return Dict(
         "report_version" => 1,
+        "reproducer" => reproducer,
         "summary" => Dict(
             "statements" => length(filter(c -> c.named && c.kind !== :comment, cst.root.children)),
             "parse_has_error" => cst.has_error,
@@ -138,3 +144,168 @@ end
 [`conversion_report`](@ref) serialized to JSON (IP-free) for sharing.
 """
 conversion_report_json(src::AbstractString) = JSON.json(conversion_report(src))
+
+# --- reproducer: un-parse the (anonymized) CST back to synthetic MATLAB ---------------------------
+# Best-effort: covers the common node kinds; identifiers become placeholders, literals become
+# dummies, operators/keywords are kept. Lets a maintainer reproduce a reported bug locally without
+# the original source. Unknown kinds fall back to emitting their named children.
+
+_repro_op(cst::MatlabCST, n::CSTNode) = begin
+    for c in n.children
+        c.named || return nodetext(cst, c)
+    end
+    "?"
+end
+
+_repro_kids(n::CSTNode) = filter(c -> c.named && c.kind !== :comment && c.kind !== :line_continuation, n.children)
+
+function _repro(io::IO, cst::MatlabCST, n::CSTNode, a::_Anon, known)
+    k = n.kind
+    kids = _repro_kids(n)
+    if k === :source_file
+        for c in kids
+            _repro(io, cst, c, a, known)
+            println(io)
+        end
+    elseif k === :identifier
+        t = nodetext(cst, n)
+        print(io, Symbol(t) in known ? t : _ph!(a, t))
+    elseif k === :number
+        print(io, "1")
+    elseif k === :string || k === :string_content
+        print(io, "'s'")
+    elseif k === :boolean || k === :end_keyword || k === :spread_operator
+        print(io, nodetext(cst, n))
+    elseif k === :assignment
+        l = _field(n, :left)
+        r = _field(n, :right)
+        l === nothing || _repro(io, cst, l, a, known)
+        print(io, " = ")
+        r === nothing || _repro(io, cst, r, a, known)
+        print(io, ";")
+    elseif k === :binary_operator || k === :comparison_operator || k === :boolean_operator
+        _repro(io, cst, kids[1], a, known)
+        print(io, " ", _repro_op(cst, n), " ")
+        _repro(io, cst, kids[2], a, known)
+    elseif k === :unary_operator
+        print(io, _repro_op(cst, n))
+        _repro(io, cst, kids[1], a, known)
+    elseif k === :postfix_operator
+        _repro(io, cst, kids[1], a, known)
+        print(io, _repro_op(cst, n))
+    elseif k === :parenthesis
+        print(io, "(")
+        isempty(kids) || _repro(io, cst, kids[1], a, known)
+        print(io, ")")
+    elseif k === :range
+        for (i, c) in enumerate(kids)
+            i > 1 && print(io, ":")
+            _repro(io, cst, c, a, known)
+        end
+    elseif k === :function_call
+        brace = any(c -> c.kind === Symbol("{"), n.children)
+        nmn = _field(n, :name)
+        argn = _childkind(n, :arguments)
+        nmn === nothing || _repro(io, cst, nmn, a, known)
+        print(io, brace ? "{" : "(")
+        _repro_args(io, cst, argn, a, known)
+        print(io, brace ? "}" : ")")
+    elseif k === :field_expression
+        o = _field(n, :object)
+        f = _field(n, :field)
+        o === nothing || _repro(io, cst, o, a, known)
+        print(io, ".")
+        f === nothing || _repro(io, cst, f, a, known)
+    elseif k === :matrix || k === :cell
+        op, cl = k === :matrix ? ("[", "]") : ("{", "}")
+        print(io, op)
+        rows = _childrenkind(n, :row)
+        for (ri, row) in enumerate(rows)
+            ri > 1 && print(io, "; ")
+            els = filter(c -> c.named, row.children)
+            for (i, c) in enumerate(els)
+                i > 1 && print(io, ", ")
+                _repro(io, cst, c, a, known)
+            end
+        end
+        print(io, cl)
+    elseif k === :function_definition
+        outn = _childkind(n, :function_output)
+        nmn = _field(n, :name)
+        argn = _childkind(n, :function_arguments)
+        blk = _childkind(n, :block)
+        print(io, "function ")
+        if outn !== nothing
+            ids = _childrenkind(outn, :identifier)
+            isempty(ids) || (_repro(io, cst, ids[1], a, known); print(io, " = "))
+        end
+        nmn === nothing || _repro(io, cst, nmn, a, known)
+        print(io, "(")
+        if argn !== nothing
+            ids = _childrenkind(argn, :identifier)
+            for (i, c) in enumerate(ids)
+                i > 1 && print(io, ", ")
+                _repro(io, cst, c, a, known)
+            end
+        end
+        println(io, ")")
+        _repro_block(io, cst, blk, a, known)
+        print(io, "end")
+    elseif k === :if_statement || k === :for_statement || k === :while_statement
+        kw = k === :if_statement ? "if" : (k === :for_statement ? "for" : "while")
+        cond = k === :for_statement ? _childkind(n, :iterator) : _field(n, :condition)
+        print(io, kw, " ")
+        cond === nothing || _repro(io, cst, cond, a, known)
+        println(io)
+        _repro_block(io, cst, _childkind(n, :block), a, known)
+        print(io, "end")
+    elseif k === :iterator
+        id = _childkind(n, :identifier)
+        rng = filter(c -> c.named && c.kind !== :identifier, n.children)
+        id === nothing || _repro(io, cst, id, a, known)
+        print(io, " = ")
+        isempty(rng) || _repro(io, cst, rng[1], a, known)
+    else
+        # Unknown kind: emit its named children space-separated (keeps output mostly parseable).
+        for (i, c) in enumerate(kids)
+            i > 1 && print(io, " ")
+            _repro(io, cst, c, a, known)
+        end
+        isempty(kids) && print(io, "id0")
+    end
+    return
+end
+
+function _repro_args(io::IO, cst::MatlabCST, argn, a::_Anon, known)
+    argn === nothing && return
+    args = filter(c -> c.named && c.kind !== :comment, argn.children)
+    for (i, c) in enumerate(args)
+        i > 1 && print(io, ", ")
+        _repro(io, cst, c, a, known)
+    end
+    return
+end
+
+function _repro_block(io::IO, cst::MatlabCST, blk, a::_Anon, known)
+    blk === nothing && return
+    for c in _repro_kids(blk)
+        print(io, "    ")
+        _repro(io, cst, c, a, known)
+        println(io)
+    end
+    return
+end
+
+"""
+    replay_report(report::AbstractDict) -> Dict
+
+Reconstruct a synthetic, IP-free MATLAB reproducer from a [`conversion_report`](@ref) and re-run
+the conversion on it, returning a fresh report. This lets a maintainer reproduce a reported problem
+locally **without the original source** — identifiers are placeholders, literals are dummies, only
+node structure and MATLAB keywords/builtins are preserved. The reconstructed source is in
+`report["reproducer"]`; `replay_report` runs `conversion_report` on it.
+
+Best-effort: the reproducer covers the common node kinds and may not re-trigger issues that depend
+on specific literal values or rare constructs.
+"""
+replay_report(report::AbstractDict) = conversion_report(String(report["reproducer"]))
