@@ -358,6 +358,20 @@ end
         @test any(t -> occursin("persistent", t), r.todos)
     end
 
+    @testset "strings/regex, functional, type predicates, expr-statements" begin
+        @test occursin("a .== b", convert_matlab("a == b\n"; wrap_script = false).julia)   # bare comparison statement
+        @test occursin("replace(s, Regex(", convert_matlab("y = regexprep(s, '\\d', '#');\n"; wrap_script = false).julia)
+        @test occursin("split(s, \",\")", convert_matlab("p = strsplit(s, ',');\n"; wrap_script = false).julia)
+        @test occursin("map(f, c)", convert_matlab("r = cellfun(@f, c, 'UniformOutput', false);\n"; wrap_script = false).julia)
+        @test occursin("x isa Float64", convert_matlab("t = isa(x, 'double');\n"; wrap_script = false).julia)
+        @test occursin("s isa AbstractString", convert_matlab("u = ischar(s);\n"; wrap_script = false).julia)
+        @test occursin("eltype(z) <: Number", convert_matlab("v = isnumeric(z);\n"; wrap_script = false).julia)
+        @test occursin("string(typeof(x))", convert_matlab("c = class(x);\n"; wrap_script = false).julia)
+        # a builtin called with unexpected arity degrades to a plain call (no crash)
+        r = convert_matlab("y = regexprep(s, p);\n"; wrap_script = false)
+        @test r isa ConvertResult && any(t -> occursin("unexpected arity", t), r.todos)
+    end
+
     @testset "empty blocks don't crash (if/for/while/try with no body)" begin
         for s in ("if x\nend\n", "for i = 1:n\nend\n", "while c\nend\n", "if x\nelse\nend\n", "try\nend\n")
             @test convert_matlab(s; wrap_script = false) isa ConvertResult

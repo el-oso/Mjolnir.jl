@@ -378,6 +378,12 @@ function lower_stmt(ctx::Ctx, n::CSTNode)
         return lower_expr(ctx, n)
     elseif k === :field_expression                       # method-call / field statement: obj.m(x);
         return lower_expr(ctx, n)
+    elseif k in (
+            :comparison_operator, :binary_operator, :boolean_operator, :unary_operator,
+            :not_operator, :postfix_operator, :identifier, :number, :string, :range, :matrix,
+            :cell, :parenthesis, :lambda, :handle_operator,
+        )
+        return lower_expr(ctx, n)                         # bare expression statement (MATLAB displays it)
     elseif k === :if_statement
         return lower_if(ctx, n)
     elseif k === :for_statement

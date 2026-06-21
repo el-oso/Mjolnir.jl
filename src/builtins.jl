@@ -19,6 +19,15 @@ const ELEMENTWISE = Dict{Symbol, Symbol}(
     :gcd => :gcd, :lcm => :lcm, :factorial => :factorial,
 )
 
+# MATLAB class-name strings -> Julia types, for `isa(x,'type')`.
+const _MATLAB_TYPES = Dict{String, Any}(
+    "double" => :Float64, "single" => :Float32, "char" => :AbstractString, "string" => :AbstractString,
+    "logical" => :Bool, "cell" => :(Vector{Any}), "struct" => :NamedTuple, "numeric" => :Number,
+    "function_handle" => :Function,
+    "int8" => :Int8, "int16" => :Int16, "int32" => :Int32, "int64" => :Int64,
+    "uint8" => :UInt8, "uint16" => :UInt16, "uint32" => :UInt32, "uint64" => :UInt64,
+)
+
 # Bare-identifier constants: MATLAB name -> Julia expression.
 const IDENT_MAP = Dict{Symbol, Any}(
     :pi => :pi, :Inf => :Inf, :inf => :Inf, :NaN => :NaN, :nan => :NaN,
@@ -62,7 +71,16 @@ function lower_builtin(ctx, name::Symbol, args)
         return _bcast(ELEMENTWISE[name], args)
     end
     h = get(SPECIAL, name, nothing)
-    h !== nothing && return h(ctx, args)
+    if h !== nothing
+        # Handlers assume MATLAB's usual arity; an unusual call shouldn't crash the file.
+        try
+            return h(ctx, args)
+        catch e
+            e isa BoundsError || rethrow()
+            push!(ctx.todos, "builtin `$name` called with unexpected arity; emitted a plain call")
+            return Expr(:call, name, args...)
+        end
+    end
     name in BASE_OK && return Expr(:call, name, args...)
     return nothing
 end
@@ -118,6 +136,34 @@ const SPECIAL = Dict{Symbol, Function}(
     :contains => (ctx, a) -> Expr(:call, :occursin, a[2], a[1]),   # (str,pat) -> occursin(pat,str)
     :startsWith => (ctx, a) -> Expr(:call, :startswith, a...),
     :endsWith => (ctx, a) -> Expr(:call, :endswith, a...),
+    :strsplit => (ctx, a) -> Expr(:call, :split, a...),
+    :strjoin => (ctx, a) -> Expr(:call, :join, a...),
+    :deblank => (ctx, a) -> Expr(:call, :rstrip, a...),
+    :fileread => (ctx, a) -> Expr(:call, :read, a[1], :String),
+    :regexprep => (ctx, a) -> Expr(:call, :replace, a[1], Expr(:call, :(=>), Expr(:call, :Regex, a[2]), a[3])),
+    :char => (ctx, a) -> Expr(:., :Char, Expr(:tuple, a...)),       # best-effort (char is overloaded)
+    :class => (ctx, a) -> Expr(:call, :string, Expr(:call, :typeof, a[1])),
+    :isequaln => (ctx, a) -> Expr(:call, :isequal, a...),
+    :typecast => (ctx, a) -> Expr(:call, :reinterpret, get(_MATLAB_TYPES, a[2] isa AbstractString ? a[2] : "", :UInt8), a[1]),
+    # --- type predicates (approximate; MATLAB's type system != Julia's) ---
+    :ischar => (ctx, a) -> Expr(:call, :isa, a[1], :AbstractString),
+    :isnumeric => (ctx, a) -> Expr(:call, :<:, Expr(:call, :eltype, a[1]), :Number),
+    :islogical => (ctx, a) -> Expr(:call, :<:, Expr(:call, :eltype, a[1]), :Bool),
+    :isstruct => (ctx, a) -> Expr(:call, :isa, a[1], :NamedTuple),
+    :iscell => (ctx, a) -> Expr(:call, :isa, a[1], :(Vector{Any})),
+    :isa => (ctx, a) -> begin
+        ty = (length(a) >= 2 && a[2] isa AbstractString) ? get(_MATLAB_TYPES, a[2], nothing) : nothing
+        ty === nothing ? Expr(:call, :isa, a...) : Expr(:call, :isa, a[1], ty)
+    end,
+    # --- functional iteration ---
+    :cellfun => (ctx, a) -> begin                         # drop trailing 'UniformOutput',false etc.
+        stop = findfirst(x -> x isa AbstractString, a)
+        Expr(:call, :map, (stop === nothing ? a : a[1:(stop - 1)])...)
+    end,
+    :arrayfun => (ctx, a) -> begin
+        stop = findfirst(x -> x isa AbstractString, a)
+        Expr(:call, :map, (stop === nothing ? a : a[1:(stop - 1)])...)
+    end,
     :sprintf => (ctx, a) -> begin
         push!(ctx.imports, :Printf)
         Expr(:macrocall, Expr(:., :Printf, QuoteNode(Symbol("@sprintf"))), nothing, _printf_args(a)...)
