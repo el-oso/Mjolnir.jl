@@ -15,8 +15,6 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    env:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
@@ -47,11 +45,12 @@ jobs:
           julia --project=. deps/build.jl
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      # Codecov no longer accepts tokenless uploads; only upload once CODECOV_TOKEN is set
-      # (Settings -> Secrets -> Actions). Until then the badge reads "unknown" but CI stays green.
-      - name: Upload coverage to Codecov
-        if: env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@v4
+      # Coveralls works tokenless for public repos via the built-in GITHUB_TOKEN — no per-repo
+      # secret needed (unlike Codecov, which now rejects tokenless uploads -> "unknown" badge).
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
         with:
-          files: lcov.info
-          fail_ci_if_error: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: lcov.info
+          format: lcov
+          fail-on-error: false

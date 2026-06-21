@@ -2,7 +2,7 @@
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://el-oso.github.io/Mjolnir.jl/dev/)
 [![CI](https://github.com/el-oso/Mjolnir.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/el-oso/Mjolnir.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/el-oso/Mjolnir.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/el-oso/Mjolnir.jl)
+[![Coverage](https://coveralls.io/repos/github/el-oso/Mjolnir.jl/badge.svg?branch=main)](https://coveralls.io/github/el-oso/Mjolnir.jl?branch=main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: Runic](https://img.shields.io/badge/code_style-Runic-000000.svg)](https://github.com/fredrikekre/Runic.jl)
 
