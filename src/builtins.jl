@@ -138,7 +138,16 @@ const SPECIAL = Dict{Symbol, Function}(
     :cross => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :cross, a...)),
     :trace => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :tr, a...)),  # renamed
     :det => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :det, a...)),
-    :diag => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :diag, a...)),
+    # MATLAB diag(v) builds a diagonal matrix; diag(M) extracts the diagonal. Dispatch by ndims.
+    :diag => (ctx, a) -> begin
+        push!(ctx.imports, :LinearAlgebra)
+        length(a) == 1 ?
+            Expr(
+                :if, Expr(:call, :(==), Expr(:call, :ndims, a[1]), 1),
+                Expr(:call, :diagm, a[1]), Expr(:call, :diag, a[1])
+            ) :
+            Expr(:call, :diagm, a...)
+    end,
     :eig => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :eigvals, a...)),  # [V,D]=eig needs eigen
     :transpose => (ctx, a) -> Expr(:call, :transpose, a...),
     :kron => (ctx, a) -> (push!(ctx.imports, :LinearAlgebra); Expr(:call, :kron, a...)),

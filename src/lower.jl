@@ -344,8 +344,10 @@ function lower_matrix(ctx::Ctx, n::CSTNode)
     rowelems = [map(c -> lower_expr(ctx, c), _named(r)) for r in rows]
     if length(rowelems) == 1
         e = rowelems[1]
-        # MATLAB row vector -> Julia 1-D Vector (idiomatic; transpose/inner-product/size diverge).
-        return length(e) == 1 ? e[1] : Expr(:vect, e...)
+        length(e) == 1 && return e[1]
+        # Scalar-literal row -> 1-D Vector (idiomatic); otherwise it's horizontal concatenation
+        # of arrays (e.g. an augmented matrix `[A b]`) -> hcat.
+        return all(x -> x isa Number, e) ? Expr(:vect, e...) : Expr(:hcat, e...)
     elseif all(r -> length(r) == 1, rowelems)
         return Expr(:vcat, (r[1] for r in rowelems)...)
     else
@@ -500,19 +502,37 @@ _uses_sym(e::Symbol, s) = e === s
 _uses_sym(e::Expr, s) = any(a -> _uses_sym(a, s), e.args)
 _uses_sym(::Any, s) = false
 
-# Call-like args = no colon/range/end (those mark indexing, not a function call).
-function _calllike_args(nd::CSTNode)
+# Call-like args = no colon/range/end and no loop-index argument (those mark indexing).
+function _calllike_args(ctx::Ctx, nd::CSTNode, loopidx)
     an = _childkind(nd, :arguments)
     an === nothing && return true
-    return !any(a -> a.kind in (:spread_operator, :range, :end_keyword), _named(an))
+    for a in _named(an)
+        a.kind in (:spread_operator, :range, :end_keyword) && return false
+        a.kind === :identifier && Symbol(nodetext(ctx.cst, a)) in loopidx && return false
+    end
+    return true
 end
 
-# Heuristic: a parameter that appears in the body ONLY as a call-like callee `p(...)` (never in
-# arithmetic, never indexed-assigned, never with colon/range args) is a function handle, so its
-# calls must stay calls — not `p[...]`. This recovers the common numerical pattern `f(x)`.
+# Loop-index variables introduced by `for` iterators within a block.
+function _loopidx(ctx::Ctx, blk)
+    idx = Set{Symbol}()
+    walk(blk) do nd
+        if nd.kind === :iterator
+            id = _childkind(nd, :identifier)
+            id === nothing || push!(idx, Symbol(nodetext(ctx.cst, id)))
+        end
+    end
+    return idx
+end
+
+# Heuristic: a parameter that appears in the body ONLY as a call-like callee `p(...)` — never in
+# arithmetic, never indexed-assigned, never with colon/range args, and never called with a loop
+# index (which would be array indexing) — is a function handle, so its calls stay calls (`f(x)`,
+# not `f[x]`). The loop-index exclusion avoids misclassifying read-only array params like `y(i)`.
 function _callonly_params(ctx::Ctx, blk, params)
     isempty(params) && return Symbol[]
     pset = Set(params)
+    loopidx = _loopidx(ctx, blk)
     total = Dict(p => 0 for p in params)
     callish = Dict(p => 0 for p in params)
     walk(blk) do nd
@@ -523,7 +543,7 @@ function _callonly_params(ctx::Ctx, blk, params)
             nm = _field(nd, :name)
             if nm !== nothing && nm.kind === :identifier
                 s = Symbol(nodetext(ctx.cst, nm))
-                (s in pset && _calllike_args(nd)) && (callish[s] += 1)
+                (s in pset && _calllike_args(ctx, nd, loopidx)) && (callish[s] += 1)
             end
         end
     end
