@@ -489,7 +489,25 @@ end
         @test occursin("Any", convert_matlab("c = {1, 2; 3, 4};\n"; wrap_script = false).julia)   # 2-row cell
         @test occursin("elseif", convert_matlab("if x == 1\n  y = 1;\nelseif x == 2\n  y = 2;\nelse\n  y = 3;\nend\n"; wrap_script = false).julia)
         @test convert_matlab("s.a.b = 1;\n"; wrap_script = false) isa ConvertResult       # nested field assign
+        # module wrapper (modulename) path
+        @test occursin("module MyMod", convert_matlab("function y = f(x)\n  y = x;\nend\n"; modulename = "MyMod").julia)
+        # dynamic field read s.(f) -> getproperty
+        @test occursin("getproperty", convert_matlab("y = s.(fn);\n"; wrap_script = false).julia)
+        # parse-error input: has_error recorded, and conversion_report emits a parse_error problem
+        @test convert_matlab("x = (1 2);\n").has_error
+        pe = conversion_report("x = (1 2);\n")
+        @test pe["summary"]["parse_has_error"] && any(p -> p["type"] == "parse_error", pe["problems"])
     end
+
+    @testset "disp method using disp() redirects println to io" begin
+        src = "classdef Q\n  properties\n    v\n  end\n  methods\n" *
+            "    function obj = Q(x)\n      obj.v = x;\n    end\n" *
+            "    function disp(obj)\n      disp(obj.v);\n    end\n  end\nend\n"
+        jl = convert_matlab(src).julia
+        @test occursin("function Base.show(io::IO, obj::Q)", jl)
+        @test occursin("println(io,", jl)        # inner disp -> println, redirected to io
+    end
+
 
     @testset "obj.property(i) indexes the property, not a method call" begin
         src = "classdef Box\n  properties\n    data\n  end\n  methods\n" *
