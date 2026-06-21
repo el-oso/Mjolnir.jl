@@ -95,6 +95,8 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | 🟡 | `interp1/interp2` | `Interpolations.linear_interpolation(...).(xq)` | linear default, 'spline'/'cubic'->cubic_spline; interp2 grids must be coordinate vectors |
 | 🟡 | `tf/ss/step/bode/lsim/c2d/feedback/pole (Control toolbox)` | `ControlSystems.tf/ss/...` | ControlSystems.jl; pole->poles; step/bode return objects, not [y,t] |
 | 🟡 | `seqcomplement/seqrcomplement/nt2aa/randseq (Bioinformatics toolbox)` | `BioSequences.complement/reverse_complement/translate/randdnaseq` | BioJulia; inputs must be BioSequences (wrap char strings, e.g. LongDNA{4}(s)) |
+| ✅ | `sparse/speye/full/nnz/nonzeros` | `SparseArrays.sparse / sparse(I,n,n) / Matrix / count(!iszero,x) / nonzeros` | SparseArrays stdlib; spdiags/accumarray/sub2ind still TODO |
+| ✅ | `gpuArray/gather` | `identity (CPU target — GPU transfer is a no-op)` | results identical, just not offloaded |
 | ⬜ | `syms / symbolic math` | `—` | Symbolic Toolbox; would need Symbolics.jl |
 
 ## Linear algebra & arrays

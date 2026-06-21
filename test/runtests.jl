@@ -372,6 +372,15 @@ end
         @test r isa ConvertResult && any(t -> occursin("unexpected arity", t), r.todos)
     end
 
+    @testset "sparse arrays, gpuArray no-op, CRLF normalization" begin
+        @test occursin("SparseArrays.sparse(r, c, v", convert_matlab("K = sparse(r, c, v, n, n);\n"; wrap_script = false).julia)
+        @test occursin("count(!iszero, K)", convert_matlab("z = nnz(K);\n"; wrap_script = false).julia)
+        @test occursin("Matrix(K)", convert_matlab("d = full(K);\n"; wrap_script = false).julia)
+        @test occursin("y = A", convert_matlab("y = gpuArray(A);\n"; wrap_script = false).julia)
+        # CRLF (Windows): a `...` continuation + trailing comment must still parse cleanly
+        @test !convert_matlab("x = plot(a, b, '-k',... % c\r\n   c, d, '-r');\r\n").has_error
+    end
+
     @testset "bioinformatics: BioJulia maps + from-scratch NW alignment e2e" begin
         @test occursin("BioSequences.reverse_complement", convert_matlab("y = seqrcomplement(s);\n"; wrap_script = false).julia)
         @test occursin("BioSequences.translate", convert_matlab("y = nt2aa(s);\n"; wrap_script = false).julia)

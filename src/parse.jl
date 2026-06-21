@@ -107,6 +107,9 @@ Parse a MATLAB source string into a concrete syntax tree.
 """
 function parse_matlab(src::AbstractString)
     s = String(src)
+    # Normalize Windows/old-Mac line endings: CRLF/CR -> LF. A stray `\r` (common in Windows-
+    # authored .m files) breaks the grammar's line-continuation (`...`) + trailing-comment handling.
+    (occursin('\r', s)) && (s = replace(s, "\r\n" => "\n", "\r" => "\n"))
     # A file without a trailing newline makes the grammar insert a MISSING statement separator
     # at EOF (spurious has_error). Append one — harmless and matches how MATLAB treats EOF.
     (isempty(s) || endswith(s, '\n')) || (s = s * "\n")

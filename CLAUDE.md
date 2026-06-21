@@ -81,6 +81,9 @@ Public API: `convert_matlab(src; modulename, idiomatic=true, wrap_script=true)`,
   Dict-like but we deliberately prefer Julia structs/NamedTuples, **not `Dict`**.
 - **Single-line `;`-separated control flow** (`for …; …; end`) makes the grammar emit an ERROR
   node → flagged via `ConvertResult.has_error`. Use newlines.
+- **CRLF line endings are normalized** in `parse_matlab` (`\r\n`/`\r` → `\n`). Windows-authored
+  `.m` files otherwise break the grammar's `...` line-continuation + trailing-comment handling
+  (a stray `\r` orphans the continuation line → spurious ERROR nodes).
 - **Emitter must stay valid**: `emit.jl` runs a `JuliaSyntax` parse gate; unmapped builtins pass
   through as a plain call and are recorded in `ConvertResult.todos`.
 

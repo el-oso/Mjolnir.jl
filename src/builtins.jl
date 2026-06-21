@@ -284,6 +284,23 @@ const SPECIAL = Dict{Symbol, Function}(
     :imrotate => _pkg(:ImageTransformations, :imrotate),
     :imfilter => _pkg(:ImageFiltering, :imfilter),
     :imagesc => _pkg(:Plots, :heatmap),
+    # --- sparse arrays -> SparseArrays (stdlib) ---
+    :sparse => _pkg(:SparseArrays, :sparse),
+    :nonzeros => _pkg(:SparseArrays, :nonzeros),
+    :full => (ctx, a) -> Expr(:call, :Matrix, a...),
+    :nnz => (ctx, a) -> Expr(:call, :count, Expr(:call, :!, :iszero), a[1]),   # works dense & sparse
+    :spy => _pkg(:Plots, :spy),
+    :speye => (ctx, a) -> begin
+        push!(ctx.imports, :SparseArrays)
+        push!(ctx.imports, :LinearAlgebra)
+        n = length(a) == 1 ? (a[1], a[1]) : (a[1], a[2])
+        Expr(:call, Expr(:., :SparseArrays, QuoteNode(:sparse)), :(LinearAlgebra.I), n...)
+    end,
+    :uint32 => (ctx, a) -> Expr(:., :round, Expr(:tuple, :UInt32, a[1])),
+    :int32 => (ctx, a) -> Expr(:., :round, Expr(:tuple, :Int32, a[1])),
+    # GPU transfers are no-ops on the CPU target (results identical, just not offloaded)
+    :gpuArray => (ctx, a) -> a[1],
+    :gather => (ctx, a) -> a[1],
     # --- Bioinformatics toolbox -> BioJulia (BioSequences.jl). Inputs are BioSequences, so a
     # char-string arg needs wrapping (e.g. LongDNA{4}(s)) -> partial. ---
     :seqcomplement => _pkg(:BioSequences, :complement),

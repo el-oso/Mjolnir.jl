@@ -132,6 +132,8 @@ const IDIOMS = Idiom[
     Idiom("Constructors & builtins", "interp1/interp2", "Interpolations.linear_interpolation(...).(xq)", builtin = :interp1, status = :partial, notes = "linear default, 'spline'/'cubic'->cubic_spline; interp2 grids must be coordinate vectors"),
     Idiom("Constructors & builtins", "tf/ss/step/bode/lsim/c2d/feedback/pole (Control toolbox)", "ControlSystems.tf/ss/...", builtin = :tf, status = :partial, notes = "ControlSystems.jl; pole->poles; step/bode return objects, not [y,t]"),
     Idiom("Constructors & builtins", "seqcomplement/seqrcomplement/nt2aa/randseq (Bioinformatics toolbox)", "BioSequences.complement/reverse_complement/translate/randdnaseq", builtin = :seqrcomplement, status = :partial, notes = "BioJulia; inputs must be BioSequences (wrap char strings, e.g. LongDNA{4}(s))"),
+    Idiom("Constructors & builtins", "sparse/speye/full/nnz/nonzeros", "SparseArrays.sparse / sparse(I,n,n) / Matrix / count(!iszero,x) / nonzeros", builtin = :sparse, notes = "SparseArrays stdlib; spdiags/accumarray/sub2ind still TODO"),
+    Idiom("Constructors & builtins", "gpuArray/gather", "identity (CPU target — GPU transfer is a no-op)", builtin = :gpuArray, notes = "results identical, just not offloaded"),
     Idiom("Constructors & builtins", "syms / symbolic math", "—", status = :todo, notes = "Symbolic Toolbox; would need Symbolics.jl"),
     Idiom("Literals & types", "... (line continuation)", "(transparent)", notes = "ignored, as in MATLAB"),
 
