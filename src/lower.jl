@@ -316,7 +316,17 @@ _as_index(e) = (e isa Expr && e.head === :hcat) ? Expr(:vect, e.args...) : e
 function lower_call_or_index(ctx::Ctx, n::CSTNode)
     namenode = _field(n, :name)
     argsnode = _childkind(n, :arguments)
-    args = argsnode === nothing ? Any[] : map(c -> lower_expr(ctx, c), _named(argsnode))
+    rawargs = argsnode === nothing ? CSTNode[] : _named(argsnode)
+    # Cell content-indexing `c{…}` parses as a function_call with `{`/`}` delimiter tokens.
+    # `c{i}` -> `c[i]` (getindex); `c{:}` is a comma-separated list -> splat `c...`.
+    if any(c -> c.kind === Symbol("{"), n.children)
+        callee = namenode.kind === :identifier ? _idsym(ctx, namenode) : lower_expr(ctx, namenode)
+        if length(rawargs) == 1 && rawargs[1].kind === :spread_operator
+            return Expr(:..., callee)
+        end
+        return Expr(:ref, callee, map(c -> _as_index(lower_expr(ctx, c)), rawargs)...)
+    end
+    args = map(c -> lower_expr(ctx, c), rawargs)
     if namenode.kind !== :identifier                  # computed callee, e.g. f{j}(x) -> (f[j])(x)
         return Expr(:call, lower_expr(ctx, namenode), args...)
     end
@@ -370,9 +380,12 @@ function lower_matrix(ctx::Ctx, n::CSTNode)
     rowelems = [map(c -> lower_expr(ctx, c), _named(r)) for r in rows]
     if length(rowelems) == 1
         e = rowelems[1]
-        length(e) == 1 && return e[1]
+        # `[x]` is just `x` — except a splat (`[c{:}]`) must keep its brackets (`[c...]`).
+        length(e) == 1 && !(e[1] isa Expr && e[1].head === :...) && return e[1]
         # MATLAB single-row `[...]` is a 1×N matrix (and `[A b]` is horizontal concatenation) ->
-        # hcat, matching MATLAB shape/transpose/concat fidelity.
+        # hcat, matching MATLAB shape/transpose/concat fidelity. A splat element needs `vect`
+        # (`[c...]`) since `hcat(c...)` would wrongly require ≥1 arg shaping.
+        any(x -> x isa Expr && x.head === :..., e) && return Expr(:vect, e...)
         return Expr(:hcat, e...)
     elseif all(r -> length(r) == 1, rowelems)
         return Expr(:vcat, (r[1] for r in rowelems)...)

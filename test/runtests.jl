@@ -418,6 +418,16 @@ end
         @test (nv.x, nv.y) == (-1.0, -2.0)
     end
 
+    @testset "cell content-indexing {} and comma-separated lists" begin
+        @test occursin("x = c[2]", convert_matlab("x = c{2};\n"; wrap_script = false).julia)
+        @test occursin("f(c...)", convert_matlab("f(c{:});\n"; wrap_script = false).julia)
+        @test occursin("[c...]", convert_matlab("y = [c{:}];\n"; wrap_script = false).julia)
+        jl = convert_matlab("function s = cellsum(c)\n  v = [c{:}];\n  s = sum(v);\nend\n").julia
+        mod = Module()
+        Base.include_string(mod, jl)
+        @test Base.invokelatest(getfield(mod, :cellsum), Any[1.0, 2.0, 3.0, 4.0]) == 10.0
+    end
+
     @testset "empty blocks don't crash (if/for/while/try with no body)" begin
         for s in ("if x\nend\n", "for i = 1:n\nend\n", "while c\nend\n", "if x\nelse\nend\n", "try\nend\n")
             @test convert_matlab(s; wrap_script = false) isa ConvertResult

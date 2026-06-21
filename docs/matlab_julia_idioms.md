@@ -146,6 +146,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `char/class/isequaln/typecast` | `Char. / string(typeof(x)) / isequal / reinterpret` |  |
 | ✅ | `cellfun/arrayfun(f, …)` | `map(f, …)` | drops trailing 'UniformOutput',false |
 | 🟡 | `isa(x,'type') / ischar/isnumeric/isstruct/iscell/islogical` | `x isa T / eltype-based` | approximate (MATLAB type system != Julia) |
+| ✅ | `cell content-index c{i} / c{:} / [c{:}] / f(c{:})` | `c[i] / splat c... / [c...] / f(c...)` | {} is getindex; c{:} is a comma-separated list -> splat. c{i}(j) after a brace stays a call (computed-callee ambiguity) |
 
 ## Control flow & functions
 
