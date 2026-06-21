@@ -1,0 +1,32 @@
+Mjolnir.jl
+============
+
+A source-level MATLAB -> idiomatic-Julia converter.
+
+Third-party components
+----------------------
+
+At build time (deps/build.jl), Mjolnir fetches and compiles the community
+MIT-licensed MATLAB grammar for tree-sitter:
+
+  tree-sitter-matlab
+  Copyright (c) 2023 Alan Cristoffer
+  https://github.com/acristoffers/tree-sitter-matlab
+  License: MIT
+  Pinned revision: c2390a59016f74e7d5f75ef09510768b4f30217e
+
+Mjolnir links the system tree-sitter runtime (libtree-sitter) via FFI; that
+library is provided by the host system and is not redistributed here.
+
+Octave, when present, is used only as an out-of-process differential-testing
+oracle (a separate subprocess). Its source is never read and it is never linked;
+Mjolnir contains no Octave (GPL) code.
+
+Provenance & trademarks
+-----------------------
+
+This software is an independent, clean-room tool derived from publicly
+documented MATLAB language and function references. It contains no MathWorks
+headers, source, or binaries. MATLAB is a registered trademark of The MathWorks,
+Inc.; this project is not affiliated with, sponsored by, or endorsed by The
+MathWorks, Inc.

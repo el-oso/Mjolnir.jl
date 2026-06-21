@@ -1,0 +1,19 @@
+name = "Mjolnir"
+uuid = "f444ae27-70b1-494a-b621-8aee58c58b94"
+version = "0.1.0"
+authors = ["el-oso <15278831+el-oso@users.noreply.github.com>"]
+
+[deps]
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+
+[compat]
+Downloads = "1.7.0"
+JSON = "1.6.1"
+JuliaSyntax = "1.0.2"
+Libdl = "1.11.0"
+Pkg = "1.12.1"
+julia = "1.12"
