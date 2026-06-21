@@ -182,6 +182,7 @@ const IDIOMS = Idiom[
     Idiom("classdef", "properties", "struct fields", notes = "defaults applied in the constructor"),
     Idiom("classdef", "constructor function obj = C(...)", "inner constructor using new()"),
     Idiom("classdef", "method function r = m(obj,...)", "function m(obj::C, ...)"),
+    Idiom("classdef", "operator methods plus/minus/mtimes/eq/lt/uminus/transpose/horzcat/...", "extend Base.:+ / :- / :* / :(==) / :< / unary :- / transpose / hcat ...", notes = "so a+b, a==b, -a, a' dispatch; elementwise times/rdivide/power left as plain methods (route via *)"),
     Idiom("classdef", "classdef C < S", "abstract type AbstractC <: AbstractS", status = :partial, notes = "inheritance only when S converted in the same unit"),
     Idiom("classdef", "struct arrays / events / Access= attrs", "—", status = :todo),
 ]

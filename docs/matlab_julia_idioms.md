@@ -183,6 +183,7 @@ Canonical source: `src/idioms.jl`. Machine-readable mirror: `docs/idioms.json`.
 | ✅ | `properties` | `struct fields` | defaults applied in the constructor |
 | ✅ | `constructor function obj = C(...)` | `inner constructor using new()` |  |
 | ✅ | `method function r = m(obj,...)` | `function m(obj::C, ...)` |  |
+| ✅ | `operator methods plus/minus/mtimes/eq/lt/uminus/transpose/horzcat/...` | `extend Base.:+ / :- / :* / :(==) / :< / unary :- / transpose / hcat ...` | so a+b, a==b, -a, a' dispatch; elementwise times/rdivide/power left as plain methods (route via *) |
 | 🟡 | `classdef C < S` | `abstract type AbstractC <: AbstractS` | inheritance only when S converted in the same unit |
 | ⬜ | `struct arrays / events / Access= attrs` | `—` |  |
 

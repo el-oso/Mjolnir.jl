@@ -397,6 +397,27 @@ end
         @test Base.invokelatest(getfield(mod, :nw), collect("GATTACA"), collect("GCATGCU"), 1, -1, -2) == -1
     end
 
+    @testset "classdef operator overloading -> Base operators (e2e)" begin
+        src = "classdef Vec2\n  properties\n    x\n    y\n  end\n  methods\n" *
+            "    function obj = Vec2(a, b)\n      obj.x = a;\n      obj.y = b;\n    end\n" *
+            "    function r = plus(a, b)\n      r = Vec2(a.x + b.x, a.y + b.y);\n    end\n" *
+            "    function t = eq(a, b)\n      t = (a.x == b.x) && (a.y == b.y);\n    end\n" *
+            "    function n = uminus(a)\n      n = Vec2(-a.x, -a.y);\n    end\n  end\nend\n"
+        jl = convert_matlab(src).julia
+        @test occursin("function Base.:+(a::Vec2", jl)
+        @test occursin("Base.:(==)", jl)
+        mod = Module()
+        Base.include_string(mod, jl)
+        V = getfield(mod, :Vec2)
+        v1 = Base.invokelatest(V, 1.0, 2.0)
+        v2 = Base.invokelatest(V, 3.0, 4.0)
+        w = Base.invokelatest(+, v1, v2)
+        @test (w.x, w.y) == (4.0, 6.0)
+        @test Base.invokelatest(==, v1, v1) && !Base.invokelatest(==, v1, v2)
+        nv = Base.invokelatest(-, v1)
+        @test (nv.x, nv.y) == (-1.0, -2.0)
+    end
+
     @testset "empty blocks don't crash (if/for/while/try with no body)" begin
         for s in ("if x\nend\n", "for i = 1:n\nend\n", "while c\nend\n", "if x\nelse\nend\n", "try\nend\n")
             @test convert_matlab(s; wrap_script = false) isa ConvertResult

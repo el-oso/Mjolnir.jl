@@ -166,6 +166,21 @@ const CMPMAP = Dict{String, Symbol}(
     "<" => :.<, ">" => :.>, "<=" => :.<=, ">=" => :.>=,
 )
 
+# classdef operator-overload method names -> the Base function they must extend, so that a
+# converted class actually responds to `a + b`, `a == b`, `-a`, `a'`, etc. (A method emitted as a
+# plain `plus(a::C, b)` would never be reached by Julia's `+`.) Elementwise forms (times/rdivide/
+# power) are intentionally omitted — they map ambiguously; `.*` etc. still route through `*` since
+# the objects broadcast as scalars.
+const CLASS_OPS = Dict{Symbol, Any}(
+    :plus => :+, :minus => :-, :uminus => :-, :uplus => :+,
+    :mtimes => :*, :mrdivide => :/, :mldivide => :\, :mpower => :^,
+    :eq => Symbol("=="), :ne => :!=, :lt => :<, :gt => :>, :le => :<=, :ge => :>=,
+    :and => :&, :or => :|, :not => :!, :xor => :xor,
+    :transpose => :transpose, :ctranspose => :adjoint,
+    :horzcat => :hcat, :vertcat => :vcat,
+    :length => :length, :numel => :length, :size => :size, :isempty => :isempty,
+)
+
 # ---------------------------------------------------------------------------------------
 # Expressions
 # ---------------------------------------------------------------------------------------
@@ -795,6 +810,12 @@ end
 function _lower_method(ctx::Ctx, fdef::CSTNode, cname::Symbol)
     f = lower_function(ctx, fdef)            # Expr(:function, Expr(:call, name, params...), body)
     call = f.args[1]
+    # Operator-overload methods must extend the corresponding Base operator (`Base.:+`, …) so the
+    # class actually responds to `a + b`, `a == b`, `-a`, `a'`, etc. (`transpose`/`adjoint` live in
+    # Base too).
+    if call.args[1] isa Symbol && haskey(CLASS_OPS, call.args[1])
+        call.args[1] = Expr(:., :Base, QuoteNode(CLASS_OPS[call.args[1]]))
+    end
     if length(call.args) >= 2                # type the first (object) parameter
         p = call.args[2]
         call.args[2] = if p isa Expr && p.head === :kw          # optional param (nargin path)
