@@ -201,8 +201,121 @@ function _fixred(e::Expr, env)
     return Expr(e.head, map(a -> _fixred(a, env), e.args)...)
 end
 
-_fixred_function(f::Expr) =
-    Expr(:function, f.args[1], _fixred(f.args[2], shape_env(f.args[2].args)))
+# ---------------------------------------------------------------------------------------
+# Loop-scope hoisting: MATLAB functions share one flat scope, but a Julia `for`/`while` body
+# is its own scope. A variable first assigned inside a loop and used after it would be
+# UndefVarError. Declare such variables `local` at the top of the enclosing scope.
+# ---------------------------------------------------------------------------------------
+
+function _walk_assigns(f, e, inloop)
+    e isa Expr || return
+    h = e.head
+    if h === :(=)
+        lhs = e.args[1]
+        if lhs isa Symbol
+            f(lhs, inloop)
+        elseif lhs isa Expr && lhs.head === :tuple
+            for t in lhs.args
+                t isa Symbol && f(t, inloop)
+            end
+        end
+    elseif h === :for || h === :while
+        _walk_assigns(f, e.args[end], true)
+    elseif h === :if || h === :elseif || h === :block || h === :let
+        for a in @view e.args[(2 - (h === :block || h === :let)):end]
+            _walk_assigns(f, a, inloop)
+        end
+    end
+    # :function / :-> are separate scopes — not descended
+    return
+end
+
+function _loop_index_vars(stmts)
+    idx = Set{Symbol}()
+    walkfor(e) = begin
+        e isa Expr || return
+        if e.head === :for && e.args[1] isa Expr && e.args[1].head === :(=) && e.args[1].args[1] isa Symbol
+            push!(idx, e.args[1].args[1])
+        end
+        (e.head === :function || e.head === :->) && return
+        foreach(walkfor, e.args)
+    end
+    foreach(walkfor, stmts)
+    return idx
+end
+
+# `local` declarations needed so loop-assigned variables survive the loop. Parameters (already
+# in scope) and loop-index variables are excluded.
+function _loop_locals(stmts; exclude = Set{Symbol}())
+    outside = Set{Symbol}()
+    inloop = Set{Symbol}()
+    _walk_assigns((v, il) -> push!(il ? inloop : outside, v), Expr(:block, stmts...), false)
+    esc = setdiff(inloop, outside, _loop_index_vars(stmts), exclude)
+    return sort!(collect(esc); by = string)
+end
+
+function _hoist_locals(bodyargs::Vector; exclude = Set{Symbol}())
+    locs = _loop_locals(bodyargs; exclude)
+    return isempty(locs) ? bodyargs : Any[Expr(:local, locs...), bodyargs...]
+end
+
+# Identifiers used outside any loop body (loop ranges/conditions count as outside).
+function _outer_uses(stmts)
+    s = Set{Symbol}()
+    rec(e::Symbol) = push!(s, e)
+    function rec(e)
+        e isa Expr || return
+        if e.head === :for
+            rec(e.args[1].args[2])               # range only, not the body
+        elseif e.head === :while
+            rec(e.args[1])                        # condition only
+        elseif !(e.head in (:function, :->))
+            foreach(rec, e.args)
+        end
+        return
+    end
+    foreach(rec, stmts)
+    return s
+end
+
+# A Julia `for` index never escapes the loop; MATLAB's does (keeps its last value). When the
+# index is used after the loop, rename the loop variable and copy it into an outer variable.
+function _capture(e, capset)
+    e isa Expr || return e
+    if e.head === :for && e.args[1] isa Expr && e.args[1].head === :(=) && e.args[1].args[1] in capset
+        v = e.args[1].args[1]
+        vnew = Symbol(v, "_i")
+        body = _capture(e.args[2], capset)
+        return Expr(
+            :for, Expr(:(=), vnew, e.args[1].args[2]),
+            Expr(:block, Expr(:(=), v, vnew), body.args...)
+        )
+    elseif e.head in (:function, :->)
+        return e
+    end
+    return Expr(e.head, map(x -> _capture(x, capset), e.args)...)
+end
+
+# Make a statement list survive Julia's loop scoping: capture escaping loop indices, then
+# declare loop-assigned-used-after variables `local`.
+function _scope_fix(stmts; exclude = Set{Symbol}())
+    capset = intersect(_loop_index_vars(stmts), _outer_uses(stmts))
+    captured = Any[_capture(s, capset) for s in stmts]
+    return _hoist_locals(captured; exclude)
+end
+
+function _param_name(p)
+    p isa Symbol && return p
+    p isa Expr && p.head in (:kw, :(::), :...) && return _param_name(p.args[1])
+    return nothing
+end
+
+function _fixred_function(f::Expr)
+    body = f.args[2]
+    params = Set{Symbol}(filter(!isnothing, map(_param_name, f.args[1].args[2:end])))
+    fixed = _fixred(body, shape_env(body.args))     # fixed is a :block
+    return Expr(:function, f.args[1], Expr(:block, _scope_fix(fixed.args; exclude = params)...))
+end
 
 function run_semantic(stmts)
     tlenv = shape_env(filter(s -> !_isdef(s), stmts))
@@ -337,7 +450,7 @@ function run_idiomatic(stmts; wrap_script::Bool = true)
     env = shape_env(script)
     script = map(s -> _rewrite(s, env), script)
     if wrap_script && _has_loop(script)
-        script = Any[Expr(:let, Expr(:block), Expr(:block, script...))]
+        script = Any[Expr(:let, Expr(:block), Expr(:block, _scope_fix(script)...))]
     end
     return vcat(defs, script)
 end

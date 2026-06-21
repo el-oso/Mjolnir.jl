@@ -332,6 +332,19 @@ end
         @test occursin("eigvals(A)", convert_matlab("e = eig(A);\n"; wrap_script = false).julia)
     end
 
+    @testset "loop scoping: value survives loop; loop index persists (MATLAB flat scope)" begin
+        # x first-assigned in the loop and used after; i (loop index) used after (matches MATLAB)
+        src = "function r = f(n)\n  for i = 1:n\n    x = i * i;\n  end\n  r = x + i;\nend\n"
+        out = convert_matlab(src).julia
+        @test occursin("local", out)                 # x hoisted to function scope
+        @test occursin("i = i_i", out)               # loop index captured so it survives
+        m = Module()
+        Base.include_string(m, out)
+        @test Base.invokelatest(getfield(m, :f), 3) == 9 + 3   # x=9 (3*3), i=3
+        # parameters must NOT be declared local (would be a syntax error)
+        @test !occursin("local n", out)
+    end
+
     @testset "loop -> comprehension (and refusal when cumulative)" begin
         comp = convert_matlab("function y = f(n)\n  y = zeros(1, n);\n  for i = 1:n\n    y(i) = i^2;\n  end\nend\n").julia
         @test occursin("y = [i ^ 2 for i = 1:n]", comp)
