@@ -1,6 +1,7 @@
 %% Source for assets/pipeline.svg. Regenerate after edits with:
 %%   mmdc -i pipeline.mmd -o pipeline.svg -b transparent -c pipeline.config.json -p puppeteer.json
-%% where puppeteer.json is {"args":["--no-sandbox"]} on sandboxed CI. The two stage chains are
+%% then scale the rendered svg to ~70%: set the <svg> width/height attributes to 0.7x (1000.24 /
+%% 384.83) leaving viewBox unchanged (mmdc -w does not scale SVG output). The two stage chains are
 %% intentionally disconnected so dagre stacks them as two rows (subgraph `direction` is ignored by
 %% the CLI renderer); the top row flows into the bottom row (idiomatic -> emit).
 flowchart LR

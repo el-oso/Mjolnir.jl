@@ -35,20 +35,11 @@ features:
 
 # Mjolnir.jl
 
-A source-level **MATLAB → idiomatic Julia** converter, written in Julia. It turns `.m`
-scripts, function files, `classdef` files, and whole project trees into idiomatic Julia
-(not a line-by-line transliteration) — ideally a loadable package.
+**Mjolnir turns your MATLAB code into Julia you can actually read** — `.m` scripts, functions,
+classes, even whole folders. It doesn't translate line by line; it writes the Julia the way a Julia
+programmer would, so the result is a real starting point, not a mess to clean up.
 
-The name is *Mjǫlnir*, Thor's hammer — the tool that forges raw material into shape — and the
-"**Mj**" carries the **M** of MATLAB and the **J** of Julia. (Pronounced *MYOL-nir*; the "j"
-is a "y" sound.)
-
-Mjolnir is the **source-transpilation** complement to the runtime-interop trio
-[Mexicah.jl](https://github.com/el-oso/Mexicah.jl) (Julia→MEX),
-[Unmex.jl](https://github.com/el-oso/Unmex.jl) (call a MEX from Julia), and
-[LibMx.jl](https://github.com/el-oso/LibMx.jl) (shared `mxArray` FFI).
-
-## At a glance
+## See it in action
 
 ```julia
 using Mjolnir
@@ -57,13 +48,28 @@ println(convert_matlab("""
       y = x.^2;
     end
     """).julia)
-# function sq(x)
-#     y = x .^ 2
-#     return y
-# end
 ```
 
-Mjolnir handles the hard parts of the language — `'` transpose vs. string, command syntax,
-whitespace-significant matrices, `end` in subscripts, column-major/1-based layout (shared with
-Julia), `classdef` operator overloading, cell comma-separated lists, multi-output builtins, and
-more. See the [idiom map](idioms.md) for the exact, normative translation rules.
+```julia
+function sq(x)
+    y = x .^ 2
+    return y
+end
+```
+
+That's the whole idea: hand it MATLAB, get back tidy Julia. The [Getting started](getting_started.md)
+page walks you through installing it, and [Examples](examples.md) shows it on real functions,
+classes, and projects.
+
+It also takes care of the fiddly corners of MATLAB that usually trip up a hand-translation —
+the `'` that's sometimes a transpose and sometimes a string, whitespace-sensitive matrices like
+`[1 -2]`, `end` inside indexing, and so on. The [Idiom map](idioms.md) lists exactly what becomes
+what.
+
+!!! note "The name"
+    *Mjolnir* is Thor's hammer — the tool that forges raw material into shape — and "**Mj**" carries
+    the **M** of MATLAB and the **J** of Julia. (Say it *MYOL-nir*; the "j" is a "y" sound.) It's
+    the source-level companion to the runtime-interop tools
+    [Mexicah.jl](https://github.com/el-oso/Mexicah.jl),
+    [Unmex.jl](https://github.com/el-oso/Unmex.jl), and
+    [LibMx.jl](https://github.com/el-oso/LibMx.jl).

@@ -1,7 +1,9 @@
 # How it works
 
-Mjolnir is an IR pipeline — each stage is one file in `src/` (`parse.jl`, `lower.jl`,
-`idiomatic.jl`, `emit.jl`, `assemble.jl`, with an optional gated `llm.jl`):
+You don't need any of this to *use* Mjolnir — this page is for the curious and for contributors.
+
+Under the hood Mjolnir is a small pipeline; each stage is one file in `src/` (`parse.jl`,
+`lower.jl`, `idiomatic.jl`, `emit.jl`, `assemble.jl`, plus the optional `llm.jl`):
 
 ![Mjolnir pipeline: .m source → parse (tree-sitter FFI → MatlabCST) → lower (CST → Julia Expr) → idiomatic (run_semantic + run_idiomatic) → emit (JuliaSyntax validity gate) → assemble (.m tree → Julia package), with an optional, gated LLM refinement step kept only if behaviorally equivalent.](assets/pipeline.svg)
 
@@ -32,7 +34,7 @@ Julia (fresh module). Any new mapping must keep the oracle green — that is the
 "correct". Idiomatic rewrites are only kept if they survive it. A real-MATLAB oracle can be used
 for the final/pre-release gate (the cases Octave gets wrong: `string`, classdef, toolboxes).
 
-## Reporting bugs without sharing source
+## Reporting bugs
 
 If a conversion misbehaves on proprietary code, `conversion_report(src)` (or
 `conversion_report_json`) produces an **IP-free** diagnostic you can file without the source.

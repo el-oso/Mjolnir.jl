@@ -20,11 +20,16 @@ makedocs(;
     checkdocs = :exports,
     pages = [
         "Home" => "index.md",
-        "Getting started" => "getting_started.md",
-        "How it works" => "guide.md",
-        "Idiom map" => "idioms.md",
-        "LLM refinement (experimental)" => "llm.md",
-        "API reference" => "api.md",
+        "User guide" => [
+            "Getting started" => "getting_started.md",
+            "Examples" => "examples.md",
+            "Idiom map" => "idioms.md",
+        ],
+        "Developer" => [
+            "How it works" => "guide.md",
+            "LLM refinement (experimental)" => "llm.md",
+            "API reference" => "api.md",
+        ],
     ],
     warnonly = true,
 )

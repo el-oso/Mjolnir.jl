@@ -8,9 +8,9 @@
 
 **Hammering MATLAB into a JL-shape.**
 
-A source-level **MATLAB → idiomatic Julia** converter, written in Julia. It turns `.m`
-scripts, function files, `classdef` files, and whole project trees into idiomatic Julia
-(not a line-by-line transliteration) — ideally a loadable package.
+Mjolnir turns your MATLAB code into Julia you can actually read — `.m` scripts, functions, classes,
+and whole project folders. It doesn't translate line by line; it writes the Julia the way a Julia
+programmer would, so you get a real starting point rather than a mess to clean up.
 
 The name is *Mjǫlnir*, Thor's hammer — the tool that forges raw material into shape — and the
 "**Mj**" carries the **M** of MATLAB and the **J** of Julia. (Pronounced *MYOL-nir*; the "j"
