@@ -18,7 +18,8 @@ this is source.
 ## Hard rules (do not violate)
 
 - **No Python, anywhere** (global user rule). The parser is the C `tree-sitter` runtime + the
-  MATLAB grammar, driven via `ccall`. Octave/MATLAB are used only as out-of-process oracles.
+  MATLAB grammar from JLL **artifacts** (`tree_sitter_jll` + `tree_sitter_matlab_jll`), driven via
+  `ccall`. Octave/MATLAB are used only as out-of-process oracles.
 - **UUIDs via `Pkg`, never hand-written.** Add deps with `Pkg.add` / generate with `Pkg.generate`.
 - **Run `runic -i src/ test/` before every commit.** All `src/*.jl` must be Runic-clean.
 - **Clean-room, MIT.** Normative reference = public MATLAB docs. `tree-sitter-matlab` (MIT,
@@ -28,12 +29,13 @@ this is source.
 ## Build & test
 
 ```
-julia --project=. deps/build.jl          # once: clone+compile the MATLAB grammar -> runtime/
-julia --project=test test/runtests.jl    # full suite (front-end + lower/emit + idiomatic + oracle)
+julia --project=. -e 'using Pkg; Pkg.instantiate()'   # pulls the tree-sitter JLL artifacts
+julia --project=test test/runtests.jl                 # full suite (front-end + lower/emit + idiomatic + oracle)
 ```
-`deps/build.jl` writes `deps/deps.jl` (resolved `libtree-sitter` paths); the module errors at
-load if it hasn't been built. `runtime/`, `deps/build/`, `deps/deps.jl`, manifests are gitignored.
-Octave is needed for the differential-oracle tests (skipped with a warning if absent).
+No build step: the tree-sitter runtime + MATLAB grammar are JLL artifacts (`tree_sitter_jll` +
+`tree_sitter_matlab_jll`), so `using Mjolnir` works after `Pkg.instantiate`. `src/Mjolnir.jl`
+aliases `LIBTREESITTER`/`LIBTREESITTER_MATLAB` to the JLL libs. Octave is needed for the
+differential-oracle tests (skipped with a warning if absent).
 
 ## Pipeline (each stage is one file in `src/`)
 

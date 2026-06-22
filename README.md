@@ -23,20 +23,16 @@ Mjolnir is the **source-transpilation** complement to the runtime-interop trio
 
 ## Installation
 
-Mjolnir is not yet registered in General. Install from GitHub, then build the parser once:
+Mjolnir is not yet registered in General. Install from GitHub:
 
 ```julia
 using Pkg
 Pkg.add(url = "https://github.com/el-oso/Mjolnir.jl")
-
-import Mjolnir
-include(joinpath(pkgdir(Mjolnir), "deps", "build.jl"))   # compiles the MATLAB grammar
 ```
 
-Requirements: a C compiler (`cc`/`gcc`), `git`, and the **tree-sitter runtime** — **≥ 0.21**
-(ABI 15; 0.25 known good). Distro packages are often too old (Debian/Ubuntu's `libtree-sitter0`
-is ABI 14 and will fail); build from source if needed. See the
-[install guide](https://el-oso.github.io/Mjolnir.jl/dev/getting_started) for details.
+No build step — the `tree-sitter` runtime and the MATLAB grammar come from the Julia **artifact
+ecosystem** (`tree_sitter_jll` + `tree_sitter_matlab_jll`), so there's no system `libtree-sitter`,
+no C compiler, and no ABI mismatch. `using Mjolnir` just works.
 
 [Octave](https://octave.org) on `PATH` is optional — only the differential-oracle tests use it
 (as an arm's-length subprocess; never linked, source never read).
@@ -67,8 +63,9 @@ The exact, normative translation rules live in the
 
 ## Highlights
 
-- **Real parser** — the community MIT `tree-sitter-matlab` grammar via C FFI (no Python),
-  handling MATLAB's hard ambiguities (`'` transpose-vs-string, command syntax, `[1 -2]`, `end`).
+- **Real parser** — the community MIT `tree-sitter-matlab` grammar via C FFI (no Python), shipped
+  as a JLL artifact, handling MATLAB's hard ambiguities (`'` transpose-vs-string, command syntax,
+  `[1 -2]`, `end`).
 - **Idiomatic, not literal** — 1-based indexing & column-major map straight across; broadcasting,
   multiple dispatch for `classdef`, NamedTuples for structs, de-broadcasting where shapes allow.
 - **Correctness is gated by a differential oracle** — every snippet is run in real **Octave**

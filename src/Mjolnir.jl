@@ -16,18 +16,13 @@ Run `deps/build.jl` once before using (compiles the MATLAB grammar):
 """
 module Mjolnir
 
-const _DEPS = normpath(joinpath(@__DIR__, "..", "deps", "deps.jl"))
-if !isfile(_DEPS)
-    error(
-        """
-        Mjolnir: native MATLAB grammar not built.
-        Run once:
-            julia> import Mjolnir
-            julia> include(joinpath(pkgdir(Mjolnir), "deps", "build.jl"))
-        """
-    )
-end
-include(_DEPS)
+# The tree-sitter runtime and the MATLAB grammar both come from the Julia artifact ecosystem
+# (JLLs from Yggdrasil), so there is no build step, no system `libtree-sitter`, and no grammar/
+# runtime ABI mismatch — the two JLLs are version-coordinated upstream.
+using tree_sitter_jll, tree_sitter_matlab_jll
+const LIBTREESITTER = tree_sitter_jll.libtreesitter
+const LIBTREESITTER_MATLAB = tree_sitter_matlab_jll.libtreesitter_matlab
+const GRAMMAR_REV = "tree_sitter_matlab_jll"
 
 include("parse.jl")
 include("builtins.jl")

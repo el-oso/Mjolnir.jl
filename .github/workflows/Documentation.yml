@@ -21,17 +21,10 @@ jobs:
           version: '1.12'
       - uses: julia-actions/cache@v2
       # DocumenterVitepress renders the site with VitePress (Node — no Python involved).
+      # The tree-sitter runtime + grammar are JLL artifacts, so no system deps / grammar build.
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libtree-sitter-dev
-      - name: Build the MATLAB grammar
-        run: |
-          julia --project=. -e 'using Pkg; Pkg.instantiate()'
-          julia --project=. deps/build.jl
       - name: Instantiate docs environment
         run: julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Build and deploy
