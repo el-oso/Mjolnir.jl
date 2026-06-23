@@ -53,12 +53,6 @@ function _validation_issue(src::AbstractString)
     end
 end
 
-"""
-    convert_matlab(src; modulename=nothing) -> ConvertResult
-
-Convert MATLAB source text to Julia. With `modulename`, the output is wrapped in a
-`module`. The result prints as the emitted Julia source.
-"""
 # --- duplicate-function guard ------------------------------------------------------------------
 # Two definitions with the same qualified name AND the same argument signature silently overwrite
 # each other in Julia (the last one wins). MATLAB lets such collisions hide across files/subfunctions;
@@ -96,6 +90,12 @@ function _duplicate_funcs(stmts)
     return [k for (k, v) in seen if v > 1]
 end
 
+"""
+    convert_matlab(src; modulename=nothing) -> ConvertResult
+
+Convert MATLAB source text to Julia. With `modulename`, the output is wrapped in a
+`module`. The result prints as the emitted Julia source.
+"""
 function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = true, wrap_script = true)
     cst = parse_matlab(src)
     ctx = Ctx(
