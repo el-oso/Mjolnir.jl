@@ -1,6 +1,11 @@
 # Pluggable differential oracle: Octave and MATLAB engines + IP-free divergence reports.
 #
-# Engine detection uses Sys.which. Both engines speak the same harvest protocol:
+# Engine detection uses Sys.which as a fast pre-check, then a smoke test (run a trivial
+# command and verify the output) to confirm the engine is actually runnable.  An installed
+# but unlicensed MATLAB prints a license error and exits non-zero — the smoke test catches
+# that and returns false.  Results are cached per process (run at most once each).
+#
+# Both engines speak the same harvest protocol:
 #   fprintf(1, '@@VAR %s %s\n', name, jsonencode(eval(name)))
 # (fprintf works in both; printf is Octave-only). JSON is already a main dep.
 #
@@ -10,25 +15,74 @@
 
 # ── Engine detection ──────────────────────────────────────────────────────────────────────────────
 
+# Cache: nothing = not yet tested, true/false = result.
+const _octave_available_cache = Ref{Union{Nothing, Bool}}(nothing)
+const _matlab_available_cache = Ref{Union{Nothing, Bool}}(nothing)
+
 """
     octave_available() -> Bool
 
-Return `true` if `octave` is found on `PATH`.
+Return `true` if `octave` is on `PATH` **and** can actually execute a trivial command
+(`octave --eval "disp(1)"` exits 0 and prints `"1"`).  An installed but broken or absent
+binary returns `false`.  The result is cached for the lifetime of the process.
 """
-octave_available() = Sys.which("octave") !== nothing
+function octave_available()
+    if _octave_available_cache[] !== nothing
+        return _octave_available_cache[]::Bool
+    end
+    result = _smoke_test_engine(:octave)
+    _octave_available_cache[] = result
+    return result
+end
 
 """
     matlab_available() -> Bool
 
-Return `true` if `matlab` is found on `PATH`.
+Return `true` if `matlab` is on `PATH` **and** can actually execute a trivial command
+(`matlab -batch "disp(1)"` exits 0 and prints `"1"`).  An installed but unlicensed MATLAB
+prints a license error and exits non-zero — this returns `false` in that case.  The result
+is cached for the lifetime of the process.
 """
-matlab_available() = Sys.which("matlab") !== nothing
+function matlab_available()
+    if _matlab_available_cache[] !== nothing
+        return _matlab_available_cache[]::Bool
+    end
+    result = _smoke_test_engine(:matlab)
+    _matlab_available_cache[] = result
+    return result
+end
+
+# Run a trivial engine command and check that it exits 0 and prints "1".
+# Returns false on any failure (binary absent, non-zero exit, wrong output, timeout, etc.).
+function _smoke_test_engine(engine::Symbol)
+    bin = if engine === :octave
+        Sys.which("octave")
+    elseif engine === :matlab
+        Sys.which("matlab")
+    else
+        return false
+    end
+    bin === nothing && return false
+    cmd = if engine === :octave
+        `$bin --no-gui -q --eval "disp(1)"`
+    else  # :matlab
+        `$bin -batch "disp(1)"`
+    end
+    try
+        out = read(pipeline(cmd; stderr = devnull), String)
+        # The output should contain "1" (possibly with whitespace/newlines).
+        return occursin(r"^\s*1\s*$"m, out)
+    catch
+        return false
+    end
+end
 
 """
     available_engines() -> Vector{Symbol}
 
-Return the list of differential-oracle engines found on the current `PATH`.
-Each element is one of `:octave`, `:matlab`.
+Return the list of differential-oracle engines that are installed **and runnable** on the
+current system.  Each element is one of `:octave`, `:matlab`.  An installed but unlicensed
+MATLAB (or any engine that fails the smoke test) is excluded.
 """
 function available_engines()
     out = Symbol[]
@@ -262,7 +316,9 @@ Engine selection:
 
 Report keys:
 - `engine` — the engine symbol used (as a `String`).
-- `mismatched` — variable names that differ between Julia and the engine.
+- `mismatched` — variable names where **the engine ran and produced a value that disagrees
+  with Julia**.  Variables that were never produced because the engine crashed are NOT listed
+  here; they appear in `engine_no_value` instead.
 - `matched` — variable names that agree.
 - `divergences` — for each mismatched variable: a summary with `julia_type`, `julia_size`,
   `engine_type`, `engine_size`, `first_diff_index`, `diff_magnitude` (no raw values).
@@ -270,6 +326,8 @@ Report keys:
 - `skeleton` — IP-free node-kind s-expression of the MATLAB source (from `conversion_report`).
 - `todos` — scrubbed conversion todos.
 - `engine_error` — error string if the engine subprocess failed (absent when clean).
+- `engine_no_value` — variables absent from engine output due to an engine crash (absent
+  when the engine ran cleanly).
 
 With `anonymize=true` (the default) no user variable/function names or raw numeric/string
 literals appear anywhere in the output — only structure, types, shapes, and diff magnitudes.
@@ -314,11 +372,21 @@ function differential_report(
     end
 
     # Compare.
+    # `mismatched` means "engine ran and produced a value that disagrees with Julia".
+    # When the engine errored (has __engine_error__) and a variable is absent from eng_result,
+    # that absence is due to the engine failing — not a genuine value disagreement.  Those
+    # vars are recorded in engine_no_value (surfaced via engine_error key) and excluded from
+    # mismatched so callers don't see false divergences.
+    engine_failed = haskey(eng_result, "__engine_error__")
     matched = String[]
     mismatched = String[]
+    engine_no_value = String[]
     divergences = Dict{String, Any}()
     for v in vars
-        if haskey(eng_result, v) && haskey(jl_result, v)
+        eng_has = haskey(eng_result, v)
+        jl_has = haskey(jl_result, v)
+        if eng_has && jl_has
+            # Both sides produced a value — compare them.
             if values_match(jl_result[v], eng_result[v])
                 push!(matched, v)
             else
@@ -326,7 +394,11 @@ function differential_report(
                 divergences[anonymize ? get(a.map, v, v) : v] =
                     _divergence_summary(jl_result[v], eng_result[v])
             end
+        elseif !eng_has && engine_failed
+            # Engine errored before producing this variable — not a value divergence.
+            push!(engine_no_value, v)
         else
+            # Variable not produced by one or both sides (script-level issue, not engine crash).
             push!(mismatched, v)
             divergences[anonymize ? get(a.map, v, v) : v] =
                 Dict{String, Any}("reason" => "variable not produced by one or both sides")
@@ -344,6 +416,9 @@ function differential_report(
     )
     if haskey(eng_result, "__engine_error__")
         rep["engine_error"] = eng_result["__engine_error__"]
+    end
+    if !isempty(engine_no_value)
+        rep["engine_no_value"] = engine_no_value
     end
     if haskey(jl_result, "__julia_error__")
         rep["julia_error"] = jl_result["__julia_error__"]

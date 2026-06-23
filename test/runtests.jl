@@ -962,20 +962,28 @@ end
 
             @testset "engine error + julia error populate report keys" begin
                 # A snippet that errors both in Octave and in the converted Julia.
+                # mismatched is empty because the engine never produced a value to compare
+                # against; the variable appears in engine_no_value instead.
                 src = "x = undefined_function_xyz_mjolnir(3.14);\n"
                 rep = differential_report(src, ["x"]; engine = :octave, anonymize = false)
-                @test haskey(rep, "engine_error")   # line 346
-                @test haskey(rep, "julia_error")    # line 349
-                @test !isempty(rep["mismatched"])
+                @test haskey(rep, "engine_error")
+                @test haskey(rep, "julia_error")
+                # Engine crashed → x was never produced → not a value divergence.
+                @test isempty(rep["mismatched"])
+                @test haskey(rep, "engine_no_value")
+                @test "x" in rep["engine_no_value"]
             end
 
-            @testset "missing-variable path: var not produced by either side" begin
-                # Request a variable that does not exist in the snippet → missing from both.
+            @testset "missing-variable path: var not produced by engine due to harvest error" begin
+                # Request a variable that does not exist in the snippet.  The harvest loop
+                # tries eval('nonexistent_var') which throws in Octave → engine exits non-zero
+                # → __engine_error__ is set → variable lands in engine_no_value, not mismatched.
                 src = "a = 5;\n"
                 rep = differential_report(src, ["nonexistent_var"]; engine = :octave, anonymize = false)
-                @test "nonexistent_var" in rep["mismatched"]
-                d = rep["divergences"]["nonexistent_var"]
-                @test haskey(d, "reason")
+                @test haskey(rep, "engine_error")
+                @test haskey(rep, "engine_no_value")
+                @test "nonexistent_var" in rep["engine_no_value"]
+                @test isempty(rep["mismatched"])
             end
 
             @testset "_engine_eval error path (catch block + __engine_error__)" begin
