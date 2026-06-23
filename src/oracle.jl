@@ -12,6 +12,17 @@
 # Moved from test/octave_oracle.jl (where they were test-only helpers):
 #   julia_eval, values_match, _flatrm, _flatrm_oct
 # They are now shared oracle utilities.
+#
+# CI licensing note:
+# MathWorks' free public-repo licensing only applies when MATLAB is launched THROUGH
+# `matlab-actions/run-command` (not when Julia spawns the binary directly). The CI
+# matlab-oracle job therefore uses a split design:
+#   1. dev/oracle_export.jl   — writes all cases + manifest.json to a workdir (no Mjolnir needed)
+#   2. matlab/oracle_harness.m — runs via run-command, harvests results to matlab_results.json
+#   3. dev/oracle_compare.jl  — reads matlab_results.json, converts+evals in Julia, compares
+# The functions below (_engine_eval/:matlab, matlab_available, _matlab_cmd) are kept for
+# LOCAL use: a developer with a licensed MATLAB can still call differential_report(engine=:matlab)
+# or set MJOLNIR_ORACLE=matlab. Direct binary invocation needs a local license.
 
 # ── Engine detection ──────────────────────────────────────────────────────────────────────────────
 
