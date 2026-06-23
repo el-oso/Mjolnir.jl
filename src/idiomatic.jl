@@ -40,6 +40,8 @@ function shape_of(e::Expr, env)
         as = @view e.args[2:end]
         f === :(:) && return :vector
         (f === :length || f === :numel) && return :scalar
+        # zero(eltype(x)) / one(eltype(x)) produce scalars; these are emitted by Fix B.
+        (f === :zero || f === :one) && return :scalar
         f in (:sum, :prod, :maximum, :minimum) && return length(as) == 1 ? :scalar : :unknown
         f === :size && return length(as) >= 2 ? :scalar : :vector
         f in (:zeros, :ones, :rand, :randn) && return length(as) >= 2 ? :matrix : :vector
@@ -192,13 +194,175 @@ _rewrite(e, env) = debroadcast(decolon(e), env)
 
 _fixred(e, env) = e
 function _fixred(e::Expr, env)
-    if e.head === :call && length(e.args) == 2 && e.args[1] in (:sum, :prod, :maximum, :minimum)
-        arg = _fixred(e.args[2], env)
-        return is_matrix(e.args[2], env) ?
-            Expr(:call, e.args[1], arg, Expr(:kw, :dims, 1)) :
-            Expr(:call, e.args[1], arg)
+    if e.head === :call && length(e.args) == 2
+        f = e.args[1]
+        # Fix A: maximum(size(x)) -> length(x) when x is a proven vector or scalar.
+        # MATLAB `length` = max dimension; for a vector/scalar the max dimension equals
+        # the number of elements, so `length` is both correct and idiomatic Julia.
+        # Leave :matrix/:unknown as maximum(size(x)) — for a matrix the two differ.
+        if f === :maximum && e.args[2] isa Expr && e.args[2].head === :call &&
+                e.args[2].args[1] === :size && length(e.args[2].args) == 2
+            inner_arg = e.args[2].args[2]
+            sh = shape_of(inner_arg, env)
+            if sh === :vector || sh === :scalar
+                return Expr(:call, :length, _fixred(inner_arg, env))
+            end
+        end
+        # Always-on semantic fix: MATLAB reductions over a matrix collapse the first
+        # dimension (a row vector), whereas Julia's `sum`/`prod`/`maximum`/`minimum`
+        # collapse to a scalar.  Add `dims=1` only when the argument is provably a
+        # matrix; vectors stay scalar (correct).
+        if f in (:sum, :prod, :maximum, :minimum)
+            arg = _fixred(e.args[2], env)
+            return is_matrix(e.args[2], env) ?
+                Expr(:call, f, arg, Expr(:kw, :dims, 1)) :
+                Expr(:call, f, arg)
+        end
     end
     return Expr(e.head, map(a -> _fixred(a, env), e.args)...)
+end
+
+# ---------------------------------------------------------------------------------------
+# Fix B — type-stable accumulator seed.
+#
+# Pattern: a variable `s` is initialised with an integer literal (`s = 0` or `s = 1`)
+# and is accumulated *only* via `s = s + arr[...]` or `s = s * arr[...]` (or the `+=`/
+# `*=` shorthand) where every indexing expr accesses the **same single array** `arr`.
+# Rewrite the seed to `zero(eltype(arr))` (+) or `one(eltype(arr))` (*).
+#
+# Conservative — any of the following aborts the rewrite:
+#   * multiple distinct arrays in the accumulation exprs
+#   * any non-accumulation reassignment of `s` (e.g. `s = something_else`)
+#   * no indexed array found
+# ---------------------------------------------------------------------------------------
+
+# Walk an expression collecting the outermost `sym[...]` references — i.e. the array
+# symbol being indexed. Only descend into arithmetic / call nodes; stop at nested
+# function definitions.
+function _indexed_arrays(e, arr_sym)
+    e isa Expr || return
+    h = e.head
+    if h === :ref && e.args[1] isa Symbol
+        push!(arr_sym, e.args[1])
+    elseif h !== :function && h !== :->
+        foreach(a -> _indexed_arrays(a, arr_sym), e.args)
+    end
+    return
+end
+
+"""Return `nothing` (ambiguous/no-match) or `(acc_var, array_sym, op)` for a function body."""
+function _find_accumulator(stmts)
+    # Collect all simple assignments and accumulation assignments.
+    # We look at top-level statements and statements inside `for`/`while` bodies only.
+    seeds = Dict{Symbol, Int}()   # var -> literal seed value (0 or 1)
+    accum_ops = Dict{Symbol, Symbol}()   # var -> :+ or :*
+    accum_arrs = Dict{Symbol, Set{Symbol}}()  # var -> set of array names indexed in RHS
+    dirty = Set{Symbol}()         # vars with non-seed, non-accum assignments
+
+    function visit(s)
+        s isa Expr || return
+        h = s.head
+        if h === :(=)
+            lhs, rhs = s.args[1], s.args[2]
+            lhs isa Symbol || return
+            v = lhs
+            # Case 1: integer literal seed  s = 0  or  s = 1
+            if rhs isa Integer || (rhs isa Expr && rhs.head === :call && rhs.args[1] === :- && length(rhs.args) == 2 && rhs.args[2] isa Integer)
+                val = rhs isa Integer ? rhs : -(rhs.args[2])
+                if val == 0
+                    seeds[v] = 0
+                elseif val == 1
+                    seeds[v] = 1
+                else
+                    push!(dirty, v)
+                end
+                return
+            end
+            # Case 2: accumulation  s = s + expr  or  s = s * expr
+            if rhs isa Expr && rhs.head === :call && length(rhs.args) == 3 &&
+                    rhs.args[1] in (:+, :*) && rhs.args[2] === v
+                op = rhs.args[1]
+                prev_op = get(accum_ops, v, op)
+                if prev_op !== op
+                    push!(dirty, v); return
+                end
+                accum_ops[v] = op
+                arr_set = get!(accum_arrs, v, Set{Symbol}())
+                _indexed_arrays(rhs.args[3], arr_set)
+                return
+            end
+            # Case 2b: broadcast accumulation  s = s .+ expr  or  s = s .* expr
+            if rhs isa Expr && rhs.head === :call && length(rhs.args) == 3 &&
+                    rhs.args[1] in (:.+, :.*) && rhs.args[2] === v
+                # treat .+ as + for the purpose of seed typing
+                op = rhs.args[1] === :.+ ? :+ : :*
+                prev_op = get(accum_ops, v, op)
+                if prev_op !== op
+                    push!(dirty, v); return
+                end
+                accum_ops[v] = op
+                arr_set = get!(accum_arrs, v, Set{Symbol}())
+                _indexed_arrays(rhs.args[3], arr_set)
+                return
+            end
+            push!(dirty, v)
+        elseif h === :for || h === :while
+            visit(s.args[end])
+        elseif h === :block
+            foreach(visit, s.args)
+        elseif h === :if || h === :elseif
+            for a in @view s.args[2:end]
+                visit(a)
+            end
+        end
+        # :function / :-> are separate scopes — not descended
+        return
+    end
+
+    foreach(visit, stmts)
+
+    # Find candidates: seeded, has at least one accumulation array, not dirty.
+    # For multi-array accums (e.g. dot-product: d += a[i]*b[i]) we take the first
+    # array found — conservative but numerically correct when all arrays share the
+    # same element type (the common case for homogeneous numeric loops).
+    for (v, seed_val) in seeds
+        v in dirty && continue
+        haskey(accum_ops, v) || continue
+        arrs = get(accum_arrs, v, Set{Symbol}())
+        isempty(arrs) && continue
+        arr = first(sort!(collect(arrs); by = string))   # deterministic: pick lexically first
+        op = accum_ops[v]
+        expected_seed = op === :+ ? 0 : 1
+        seed_val == expected_seed || continue
+        return (v, arr, op)
+    end
+    return nothing
+end
+
+"""
+Rewrite the integer-literal seed of a proved accumulator to `zero(eltype(arr))` or
+`one(eltype(arr))`. Conservative: only the *first* matching accumulator per function
+body to avoid cascading changes; if nothing matches, return stmts unchanged.
+"""
+function _typed_seeds(stmts::Vector)
+    result = _find_accumulator(stmts)
+    result === nothing && return stmts
+    (v, arr, op) = result
+    seed_repl = op === :+ ? Expr(:call, :zero, Expr(:call, :eltype, arr)) :
+        Expr(:call, :one, Expr(:call, :eltype, arr))
+    # Rewrite only the first integer-literal seed assignment for v.
+    rewritten = Ref(false)
+    out = Any[]
+    for s in stmts
+        if !rewritten[] && s isa Expr && s.head === :(=) && s.args[1] === v &&
+                s.args[2] isa Integer && (s.args[2] == 0 || s.args[2] == 1)
+            rewritten[] = true
+            push!(out, Expr(:(=), v, seed_repl))
+        else
+            push!(out, s)
+        end
+    end
+    return out
 end
 
 # ---------------------------------------------------------------------------------------
@@ -314,7 +478,8 @@ function _fixred_function(f::Expr)
     body = f.args[2]
     params = Set{Symbol}(filter(!isnothing, map(_param_name, f.args[1].args[2:end])))
     fixed = _fixred(body, shape_env(body.args))     # fixed is a :block
-    return Expr(:function, f.args[1], Expr(:block, _scope_fix(fixed.args; exclude = params)...))
+    seeded = _typed_seeds(fixed.args)               # Fix B: type-stable accumulator seeds
+    return Expr(:function, f.args[1], Expr(:block, _scope_fix(seeded; exclude = params)...))
 end
 
 function run_semantic(stmts)

@@ -1,0 +1,10 @@
+[deps]
+AllocCheck = "9b6a8646-10ed-4001-bbdc-1d2f46dfbb1a"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+Mjolnir = "f444ae27-70b1-494a-b621-8aee58c58b94"
+StrictMode = "0e98b4f4-d0e6-42ac-af0a-707c24852f32"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[preferences.StrictMode]
+checks_enabled = true
+analysis = "fast"
