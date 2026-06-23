@@ -12,8 +12,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Fast per-push gate: the differential oracle runs in Octave (an arm's-length subprocess only).
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} (Octave)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -26,20 +27,63 @@ jobs:
         with:
           version: ${{ matrix.version }}
       - uses: julia-actions/cache@v2
-      # Octave for the differential oracle (an arm's-length subprocess only). The tree-sitter
-      # runtime + MATLAB grammar come from JLL artifacts (no system libtree-sitter / cc needed).
+      # tree-sitter runtime + MATLAB grammar come from JLL artifacts (no system libtree-sitter / cc).
       - name: Install Octave
         run: |
           sudo apt-get update
           sudo apt-get install -y octave
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      # Coveralls works tokenless for public repos via the built-in GITHUB_TOKEN — no per-repo
-      # secret needed (unlike Codecov, which now rejects tokenless uploads -> "unknown" badge).
-      - name: Upload coverage to Coveralls
+      - name: Upload coverage to Coveralls (Octave)
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: lcov.info
           format: lcov
+          flag-name: octave
+          parallel: true
+          fail-on-error: false
+
+  # Real-MATLAB verification: same differential oracle, but against MATLAB (catches what Octave gets
+  # wrong — string/classdef/toolboxes). MATLAB -batch starts a fresh process per snippet, so this is
+  # slower than the Octave gate and runs in parallel rather than blocking fast feedback.
+  matlab-oracle:
+    name: MATLAB differential oracle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v2
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+        with:
+          products: MATLAB
+      - uses: julia-actions/julia-runtest@v1
+        env:
+          MJOLNIR_ORACLE: matlab   # src/oracle.jl `_engine_eval(:matlab, …)` -> `matlab -batch`
+      - uses: julia-actions/julia-processcoverage@v1
+      - name: Upload coverage to Coveralls (MATLAB)
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: lcov.info
+          format: lcov
+          flag-name: matlab
+          parallel: true
+          fail-on-error: false
+
+  # Merge the parallel coverage uploads (Octave path + MATLAB path) into one Coveralls build.
+  coverage-finish:
+    name: Finish coverage
+    needs: [test, matlab-oracle]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls finished
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
           fail-on-error: false

@@ -30,6 +30,7 @@ include("assemble.jl")
 include("llm.jl")
 include("idioms.jl")
 include("report.jl")
+include("oracle.jl")
 include("audit.jl")
 
 export parse_matlab, parse_file, sexpr
@@ -39,5 +40,7 @@ export LLMBackend, FunctionBackend, ManualBackend, SubprocessBackend, HTTPBacken
 export claude_backend, ollama_backend, refine, gated_refine, verify_equivalent, extract_code
 export Idiom, idioms, idioms_json, idioms_markdown, write_idioms, idiom_builtin_gaps
 export conversion_report, conversion_report_json, replay_report, audit_project
+export octave_available, matlab_available, available_engines
+export differential_report, differential_report_json
 
 end # module Mjolnir

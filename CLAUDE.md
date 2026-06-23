@@ -110,6 +110,12 @@ converted Julia (fresh module), comparing numerically (`oracle_check`) or field-
 as a Julia prelude). **Any new mapping must keep the oracle green** — that is the definition of
 "correct". Idiomatic rewrites are only allowed if they survive it.
 
+The engine runner is now shipped in `src/oracle.jl` and supports **both Octave and real MATLAB**.
+Engine selection is via the `MJOLNIR_ORACLE` env var (`octave|matlab|both`; default `octave`).
+`differential_report(src, vars; engine, anonymize)` builds an IP-free divergence report for any
+snippet where converted Julia disagrees with the engine (type/shape/first-diff summary only, no
+raw values). `dev/matlab_verify.jl` is the collaborator entry-point for MATLAB-having users.
+
 ## The idiom map is the shared contract (one source, three consumers)
 
 **`src/idioms.jl` is canonical** — a structured `IDIOMS::Vector{Idiom}` registry. From it:

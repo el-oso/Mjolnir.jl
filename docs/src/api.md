@@ -56,6 +56,16 @@ replay_report
 audit_project
 ```
 
+## Differential oracle
+
+```@docs
+octave_available
+matlab_available
+available_engines
+differential_report
+differential_report_json
+```
+
 ## LLM refinement
 
 ```@docs

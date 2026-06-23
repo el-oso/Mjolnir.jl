@@ -29,6 +29,7 @@ makedocs(;
         "Developer" => [
             "How it works" => "guide.md",
             "LLM refinement (experimental)" => "llm.md",
+            "Verifying against MATLAB" => "matlab_verify.md",
             "API reference" => "api.md",
         ],
     ],

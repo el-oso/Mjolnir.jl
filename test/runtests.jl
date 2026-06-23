@@ -865,6 +865,181 @@ end
     end
 end
 
+@testset "Mjolnir — differential_report (pluggable oracle + IP-free report)" begin
+    # Skip the whole testset if no engine is available.
+    if isempty(available_engines())
+        @warn "no oracle engine found — skipping differential_report tests"
+        @test_skip !isempty(available_engines())
+    else
+        # Pick Octave if available (CI never has MATLAB).
+        eng = octave_available() ? :octave : :matlab
+
+        @testset "matching snippet → mismatched is empty" begin
+            # Simple scalar arithmetic that Mjolnir converts correctly.
+            src = "a = 3;\nb = 4;\nc = sqrt(a^2 + b^2);\n"
+            rep = differential_report(src, ["c"]; engine = eng, anonymize = true)
+            @test rep["engine"] == string(eng)
+            @test isempty(rep["mismatched"])
+            @test "c" in rep["matched"] || get(rep, "matched", []) |> !isempty
+        end
+
+        @testset "divergence summary code path is exercised" begin
+            # Build two synthetic differing values and call _divergence_summary directly.
+            julia_val = [1.0, 2.0, 3.0]
+            engine_val = [1.0, 2.0, 9.0]   # third element differs
+            summary = Mjolnir._divergence_summary(julia_val, engine_val)
+            @test haskey(summary, "first_diff_index")
+            @test summary["first_diff_index"] == 3
+            @test haskey(summary, "diff_magnitude")
+            @test summary["diff_magnitude"] ≈ 6.0
+            @test haskey(summary, "julia_type")
+            @test haskey(summary, "engine_type")
+        end
+
+        @testset "anonymize=true output is IP-free (no user names / raw literals)" begin
+            # secretName, inVal, outVal should all be anonymized.
+            src = "inVal = 7;\noutVal = inVal * 2;\n"
+            rep = differential_report(src, ["outVal"]; engine = eng, anonymize = true)
+            json_str = JSON.json(rep)
+            @test !occursin("inVal", json_str)
+            @test !occursin("outVal", json_str)
+            # The literal 7 or 14 should not appear as a bare number token.
+            # (They may appear in diff_magnitude — but mismatched should be empty here.)
+            @test isempty(rep["mismatched"])
+        end
+
+        @testset "differential_report_json returns valid JSON" begin
+            src = "x = 2;\ny = x + 1;\n"
+            js = differential_report_json(src, ["y"]; engine = eng)
+            @test js isa String
+            parsed = JSON.parse(js)
+            @test haskey(parsed, "engine")
+            @test haskey(parsed, "mismatched")
+            @test haskey(parsed, "skeleton")
+        end
+
+        @testset "available_engines / octave_available / matlab_available" begin
+            engs = available_engines()
+            @test engs isa Vector{Symbol}
+            @test octave_available() == (:octave in engs)
+            @test matlab_available() == (:matlab in engs)
+        end
+
+        if octave_available()
+            @testset "engine=:auto selects octave when MATLAB absent" begin
+                # :auto must choose :octave here (MATLAB is not installed in CI).
+                src = "a = 1;\nb = a + 1;\n"
+                rep = differential_report(src, ["b"]; engine = :auto, anonymize = false)
+                @test rep["engine"] == "octave"
+                @test isempty(rep["mismatched"])
+            end
+
+            @testset "anonymize=false exposes raw variable names" begin
+                # class(x) diverges: Octave → "double", Julia → "Float64".
+                # With anonymize=false the raw var name "x" must appear in mismatched.
+                src = "x = class(3.14);\n"
+                rep = differential_report(src, ["x"]; engine = :octave, anonymize = false)
+                @test rep["engine"] == "octave"
+                @test "x" in rep["mismatched"]          # raw name, not placeholder
+                @test haskey(rep["divergences"], "x")   # keyed by raw name
+                d = rep["divergences"]["x"]
+                @test haskey(d, "julia_type")
+                @test haskey(d, "engine_type")
+                @test d["engine_type"] == "string"
+            end
+
+            @testset "real divergence: mismatched is non-empty (both sides produce)" begin
+                # class(3.14) → "double" in Octave, "Float64" in Julia → genuine mismatch.
+                src = "x = class(3.14);\n"
+                rep = differential_report(src, ["x"]; engine = :octave, anonymize = true)
+                @test !isempty(rep["mismatched"])
+                # divergences must contain a summary entry (keyed by placeholder or raw name)
+                @test !isempty(rep["divergences"])
+                first_entry = first(values(rep["divergences"]))
+                @test haskey(first_entry, "julia_type")
+                @test haskey(first_entry, "engine_type")
+            end
+
+            @testset "engine error + julia error populate report keys" begin
+                # A snippet that errors both in Octave and in the converted Julia.
+                src = "x = undefined_function_xyz_mjolnir(3.14);\n"
+                rep = differential_report(src, ["x"]; engine = :octave, anonymize = false)
+                @test haskey(rep, "engine_error")   # line 346
+                @test haskey(rep, "julia_error")    # line 349
+                @test !isempty(rep["mismatched"])
+            end
+
+            @testset "missing-variable path: var not produced by either side" begin
+                # Request a variable that does not exist in the snippet → missing from both.
+                src = "a = 5;\n"
+                rep = differential_report(src, ["nonexistent_var"]; engine = :octave, anonymize = false)
+                @test "nonexistent_var" in rep["mismatched"]
+                d = rep["divergences"]["nonexistent_var"]
+                @test haskey(d, "reason")
+            end
+
+            @testset "_engine_eval error path (catch block + __engine_error__)" begin
+                # A script that crashes Octave hits the catch branch in _engine_eval.
+                res = Mjolnir._engine_eval(:octave, "error(\"boom\");\nx = 1;\n", ["x"])
+                @test haskey(res, "__engine_error__")
+                @test !haskey(res, "x")
+            end
+
+            @testset "_engine_type_name dispatch variants" begin
+                @test Mjolnir._engine_type_name(Dict("a" => 1)) == "struct"
+                @test Mjolnir._engine_type_name("hello") == "string"
+                @test Mjolnir._engine_type_name(3.14) == "scalar"
+                @test Mjolnir._engine_type_name(nothing) == "unknown"
+                @test Mjolnir._engine_type_name(Any[]) == "empty_array"
+                @test Mjolnir._engine_type_name([1, 2, 3]) == "vector"
+                @test Mjolnir._engine_type_name([[1, 2], [3, 4]]) == "matrix"
+            end
+
+            @testset "_value_size dispatch variants" begin
+                @test Mjolnir._value_size(3.14) == [1]
+                @test Mjolnir._value_size([1, 2, 3]) == [3]
+                @test Mjolnir._value_size([1 2; 3 4]) == [2, 2]
+                @test Mjolnir._value_size(ones(2, 3, 4)) == [2, 3, 4]
+                @test Mjolnir._value_size("str") == Int[]
+            end
+
+            @testset "_engine_value_size dispatch variants" begin
+                @test Mjolnir._engine_value_size(3.14) == [1]
+                @test Mjolnir._engine_value_size("hello") == Int[]
+                @test Mjolnir._engine_value_size(Dict("a" => 1)) == Int[]
+                @test Mjolnir._engine_value_size(nothing) == Int[]
+            end
+
+            @testset "_flatrm on higher-dimensional array" begin
+                # Covers the AbstractArray fallback (not Number/Vector/Matrix).
+                arr3d = ones(2, 2, 2)
+                flat = Mjolnir._flatrm(arr3d)
+                @test flat isa Vector{Float64}
+                @test length(flat) == 8
+            end
+
+            @testset "_divergence_summary catch path (incompatible types)" begin
+                # When j is a String, _flatrm throws → catch branch fires.
+                d = Mjolnir._divergence_summary("str_val", 42.0)
+                @test haskey(d, "julia_type")
+                @test haskey(d, "engine_type")
+                # first_diff_index should NOT be set (catch branch skips it)
+                @test !haskey(d, "first_diff_index")
+            end
+
+            @testset "differential_report_json end-to-end with divergence" begin
+                src = "x = class(3.14);\n"
+                js = differential_report_json(src, ["x"]; engine = :octave, anonymize = false)
+                @test js isa String
+                parsed = JSON.parse(js)
+                @test haskey(parsed, "mismatched")
+                @test !isempty(parsed["mismatched"])
+                @test haskey(parsed, "divergences")
+            end
+        end
+    end
+end
+
 @testset "Mjolnir — Octave classdef differential oracle" begin
     if !octave_available()
         @test_skip octave_available()
