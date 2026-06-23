@@ -50,12 +50,9 @@ jobs:
   matlab-oracle:
     name: MATLAB differential oracle
     runs-on: ubuntu-latest
-    # Batch-licensing token for headless `matlab -batch` (create a MATLAB Batch Licensing Token at
-    # https://www.mathworks.com/products/matlab/online/git.html and add it as the repo secret
-    # MATLAB_BATCH_TOKEN). Without it MATLAB can't be licensed; the oracle then detects MATLAB as
-    # unavailable and skips (the job still passes — see matlab_available()'s runnability probe).
-    env:
-      MLM_LICENSE_TOKEN: ${{ secrets.MATLAB_BATCH_TOKEN }}
+    # MATLAB is FREE on GitHub-hosted runners for PUBLIC repos: matlab-actions/setup-matlab installs
+    # MATLAB + the `matlab-batch` licensing wrapper, which auto-licenses (no token/secret needed) as
+    # long as MATLAB is launched via `matlab-batch` (src/oracle.jl uses it, not the bare `matlab`).
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2

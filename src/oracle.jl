@@ -19,6 +19,17 @@
 const _octave_available_cache = Ref{Union{Nothing, Bool}}(nothing)
 const _matlab_available_cache = Ref{Union{Nothing, Bool}}(nothing)
 
+# MATLAB launcher. Prefer the MathWorks `matlab-batch` licensing wrapper, which
+# `matlab-actions/setup-matlab` puts on PATH: on public-repo GitHub Actions it auto-licenses MATLAB
+# for free (no token), whereas invoking the bare `matlab -batch` binary is NOT licensed there. Fall
+# back to `matlab -batch` for a locally-licensed MATLAB install (no `matlab-batch` wrapper present).
+_matlab_present() = Sys.which("matlab-batch") !== nothing || Sys.which("matlab") !== nothing
+function _matlab_cmd(statement::AbstractString; dir = nothing)
+    mb = Sys.which("matlab-batch")
+    c = mb !== nothing ? `$mb $statement` : `$(Sys.which("matlab")) -batch $statement`
+    return dir === nothing ? c : Cmd(c; dir = dir)
+end
+
 """
     octave_available() -> Bool
 
@@ -55,18 +66,15 @@ end
 # Run a trivial engine command and check that it exits 0 and prints "1".
 # Returns false on any failure (binary absent, non-zero exit, wrong output, timeout, etc.).
 function _smoke_test_engine(engine::Symbol)
-    bin = if engine === :octave
-        Sys.which("octave")
+    cmd = if engine === :octave
+        bin = Sys.which("octave")
+        bin === nothing && return false
+        `$bin --no-gui -q --eval "disp(1)"`
     elseif engine === :matlab
-        Sys.which("matlab")
+        _matlab_present() || return false
+        _matlab_cmd("disp(1)")
     else
         return false
-    end
-    bin === nothing && return false
-    cmd = if engine === :octave
-        `$bin --no-gui -q --eval "disp(1)"`
-    else  # :matlab
-        `$bin -batch "disp(1)"`
     end
     try
         out = read(pipeline(cmd; stderr = devnull), String)
@@ -129,8 +137,8 @@ function _engine_eval(
         end
         cmd = if engine === :octave
             Cmd(`$(Sys.which("octave")) --no-gui -q snippet.m`; dir = dir)
-        else  # :matlab
-            Cmd(`$(Sys.which("matlab")) -batch snippet`; dir = dir)
+        else  # :matlab — via the matlab-batch licensing wrapper (free on public-repo CI)
+            _matlab_cmd("snippet"; dir = dir)
         end
         out = ""
         err_msg = ""
