@@ -1,4 +1,5 @@
 [deps]
+BaseTypeContracts = "d8b4e2f3-95c6-4e7a-8f1b-2c3d4e5f6a7b"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Mjolnir = "f444ae27-70b1-494a-b621-8aee58c58b94"

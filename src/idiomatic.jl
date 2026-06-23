@@ -475,6 +475,7 @@ function _param_name(p)
 end
 
 function _fixred_function(f::Expr)
+    length(f.args) < 2 && return f   # forward-decl `function name end`: no body to rewrite
     body = f.args[2]
     params = Set{Symbol}(filter(!isnothing, map(_param_name, f.args[1].args[2:end])))
     fixed = _fixred(body, shape_env(body.args))     # fixed is a :block
@@ -520,6 +521,7 @@ function _collapse_return(f::Expr)
 end
 
 function _process_function(f::Expr)
+    length(f.args) < 2 && return f   # forward-decl `function name end`: no body to rewrite
     sig, body = f.args[1], f.args[2]
     env = shape_env(body.args)
     newbody = Expr(:block, map(s -> _rewrite(s, env), body.args)...)
@@ -535,7 +537,7 @@ function _process_struct(s::Expr)
     return Expr(:struct, s.args[1:(end - 1)]..., Expr(:block, newargs...))
 end
 
-_isdef(s) = s isa Expr && (s.head === :function || s.head === :struct || s.head === :abstract)
+_isdef(s) = s isa Expr && (s.head === :function || s.head === :struct || s.head === :abstract || s.head === :macrocall)
 
 function _process_def(s)
     s isa Expr || return s
@@ -597,6 +599,7 @@ _cblock(b) = (b isa Expr && b.head === :block) ? Expr(:block, _comprehensions(b.
 function _recurse_comprehensions(s)
     s isa Expr || return s
     if s.head === :function || s.head === :for || s.head === :while || s.head === :let
+        length(s.args) < 2 && return s   # forward-decl `function name end`: no body to recurse into
         return Expr(s.head, s.args[1], _cblock(s.args[end]))
     elseif s.head === :if || s.head === :elseif
         return Expr(

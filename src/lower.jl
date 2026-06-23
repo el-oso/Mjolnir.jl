@@ -840,6 +840,42 @@ function lower_class(ctx::Ctx, n::CSTNode)
         end
     end
 
+    # Determine contract methods: instance methods whose first parameter is the object.
+    # Exclude: constructor (already removed), operator overloads (Base.:+ etc.),
+    # disp/display (-> Base.show), and static/private methods (no first ::Self receiver).
+    # A method is "instance" if it has at least one parameter (the object is first).
+    contract_methods = _contract_method_names(ctx, methods, cname)
+
+    # Emit forward-decls + @contract before the struct (only when there are contract methods).
+    if !isempty(contract_methods)
+        push!(ctx.imports, :BaseTypeContracts)
+        # forward-decl: `function m end` for each plain-identifier name
+        for nm in contract_methods
+            push!(out, Expr(:function, nm))
+        end
+        # Build the @contract block: each method → `nm(::Self, ::Any × (nargs-1)) :: Any`
+        # or `nm(::Self, ::Any...) :: Any` for vararg methods.
+        contract_entries = Any[]
+        for (nm, nargs, is_vararg) in _contract_signatures(ctx, methods, cname)
+            sig_args = Any[Expr(:(::), :Self)]
+            if is_vararg
+                push!(sig_args, Expr(:..., Expr(:(::), :Any)))
+            else
+                for _ in 1:(nargs - 1)
+                    push!(sig_args, Expr(:(::), :Any))
+                end
+            end
+            entry = Expr(:(::), Expr(:call, nm, sig_args...), :Any)
+            push!(contract_entries, entry)
+        end
+        push!(
+            out, Expr(
+                :macrocall, Symbol("@contract"), nothing, absname,
+                Expr(:block, contract_entries...)
+            )
+        )
+    end
+
     # Inside classdef bodies, `obj.field = v` is an in-place set on the (mutable) struct.
     ctx.in_method[] = true
     try
@@ -866,7 +902,68 @@ function lower_class(ctx::Ctx, n::CSTNode)
     finally
         ctx.in_method[] = false
     end
+
+    # @verify after method defs (only when there are contract methods)
+    if !isempty(contract_methods)
+        push!(out, Expr(:macrocall, Symbol("@verify"), nothing, cname))
+    end
+
     return out
+end
+
+# Returns the set of method names that belong in the @contract: plain-identifier names
+# (not Base-extended operators, not disp/display) with at least one parameter (the object).
+function _contract_method_names(ctx::Ctx, methods::Vector{CSTNode}, cname::Symbol)
+    names = Symbol[]
+    seen = Set{Symbol}()
+    for fdef in methods
+        nm = Symbol(nodetext(ctx.cst, _field(fdef, :name)))
+        # Skip operator overloads (they dispatch via Base.:+ etc., not named-interface methods)
+        haskey(CLASS_OPS, nm) && continue
+        # Skip disp/display (they become Base.show)
+        nm in (:disp, :display) && continue
+        # Must be a plain identifier (not already Base-qualified)
+        argsnode = _childkind(fdef, :function_arguments)
+        params = argsnode === nothing ? Symbol[] :
+            [_idsym(ctx, a) for a in _childrenkind(argsnode, :identifier)]
+        # Only instance methods: first param is the receiver (the object); skip static methods
+        isempty(params) && continue
+        nm in seen && continue
+        push!(seen, nm)
+        push!(names, nm)
+    end
+    return names
+end
+
+# Returns (name, nparams, is_vararg) tuples for contract signatures.
+# One entry per unique name (first occurrence wins for arity; vararg takes priority).
+function _contract_signatures(ctx::Ctx, methods::Vector{CSTNode}, cname::Symbol)
+    sigs = Vector{Tuple{Symbol, Int, Bool}}()
+    seen = Dict{Symbol, Tuple{Int, Bool}}()  # name => (nargs, is_vararg)
+    for fdef in methods
+        nm = Symbol(nodetext(ctx.cst, _field(fdef, :name)))
+        haskey(CLASS_OPS, nm) && continue
+        nm in (:disp, :display) && continue
+        argsnode = _childkind(fdef, :function_arguments)
+        params = argsnode === nothing ? Symbol[] :
+            [_idsym(ctx, a) for a in _childrenkind(argsnode, :identifier)]
+        isempty(params) && continue
+        is_vararg = !isempty(params) && params[end] === :varargin
+        nargs = length(params)   # includes the object param
+        if haskey(seen, nm)
+            prev_nargs, prev_vararg = seen[nm]
+            # Prefer vararg form (it covers all arities); otherwise keep first
+            if is_vararg && !prev_vararg
+                seen[nm] = (nargs, true)
+                idx = findfirst(s -> s[1] === nm, sigs)
+                idx !== nothing && (sigs[idx] = (nm, nargs, true))
+            end
+        else
+            seen[nm] = (nargs, is_vararg)
+            push!(sigs, (nm, nargs, is_vararg))
+        end
+    end
+    return sigs
 end
 
 # MATLAB constructor `function obj = C(args) ... end` -> inner ctor using `new()`.

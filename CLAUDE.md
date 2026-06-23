@@ -77,13 +77,19 @@ Public API: `convert_matlab(src; modulename, idiomatic=true, wrap_script=true)`,
 - **Scripts vs functions**: a script with a top-level loop is wrapped in `let … end` (Julia
   soft-scope errors otherwise). Definitions (abstract/struct/function) are hoisted ahead of
   script statements, in order (a struct MUST precede its methods).
-- **classdef** → `abstract type AbstractC [<: AbstractSuper]` + a `mutable struct`. When the ctor
-  is the simple "assign every field once" pattern, `_try_parametric` (lower.jl) emits a **type-stable
-  parametric** struct `C{T1,…} <: AbstractC; f1::T1; …` with a direct `new{typeof(e1),…}(…)`;
-  otherwise it falls back to an untyped `mutable struct C` with the incremental `obj = new()` ctor.
-  Methods → outer `f(obj::C, …)` (`obj::C` matches any `C{…}`); operator methods extend `Base.:+`
-  etc.; `disp`/`display` → `Base.show`. `Ctx.in_method` makes `obj.field = v` an in-place set;
-  **outside** classdef the same syntax builds a **NamedTuple** — we prefer structs/NamedTuples, **not `Dict`**.
+- **classdef** → `abstract type AbstractC [<: AbstractSuper]` + a `mutable struct` + **TypeContracts
+  interface** via `BaseTypeContracts`. When the ctor is the simple "assign every field once" pattern,
+  `_try_parametric` (lower.jl) emits a **type-stable parametric** struct `C{T1,…} <: AbstractC;
+  f1::T1; …` with a direct `new{typeof(e1),…}(…)`; otherwise it falls back to an untyped
+  `mutable struct C` with the incremental `obj = new()` ctor. Methods → outer `f(obj::C, …)`
+  (`obj::C` matches any `C{…}`); operator methods extend `Base.:+` etc.; `disp`/`display` →
+  `Base.show`. **TypeContracts contract**: instance methods (first param = object) emit forward-decls
+  `function m end`, `@contract AbstractC begin m(::Self, ::Any...)::Any … end`, and `@verify C` after
+  the method defs. Excluded from the contract: constructor, operator overloads (Base-extended),
+  `disp`/`display`, static methods (no receiver). Property-only classes (no instance methods) skip
+  `@contract`/`@verify`. `ctx.imports` gets `:BaseTypeContracts` whenever a contract is emitted.
+  `Ctx.in_method` makes `obj.field = v` an in-place set; **outside** classdef the same syntax builds
+  a **NamedTuple** — we prefer structs/NamedTuples, **not `Dict`**.
 - **Idiomatic passes (idiomatic.jl):** `out = expr; return out` collapses to `return expr`
   (`_collapse_return`); homogeneous cell literals narrow `Any[1,2,3]`→`[1,2,3]` (`_narrow_cells`,
   but kept `Any[]` if the var is element-assigned or heterogeneous).

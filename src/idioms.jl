@@ -178,12 +178,12 @@ const IDIOMS = Idiom[
     Idiom("Scripts vs functions", "function file", "top-level functions (hoisted ahead of script code)"),
 
     # --- classdef ---
-    Idiom("classdef", "classdef C", "abstract type AbstractC + mutable struct C <: AbstractC"),
+    Idiom("classdef", "classdef C", "abstract type AbstractC + mutable struct C <: AbstractC + @contract/@verify via BaseTypeContracts", notes = "instance methods become a @contract on the abstract type; @verify C enforces method existence at precompile time; property-only classes skip @contract/@verify"),
     Idiom("classdef", "properties", "struct fields", notes = "defaults applied in the constructor"),
     Idiom("classdef", "constructor function obj = C(...)", "inner constructor using new()"),
-    Idiom("classdef", "method function r = m(obj,...)", "function m(obj::C, ...)"),
-    Idiom("classdef", "operator methods plus/minus/mtimes/eq/lt/uminus/transpose/horzcat/...", "extend Base.:+ / :- / :* / :(==) / :< / unary :- / transpose / hcat ...", notes = "so a+b, a==b, -a, a' dispatch; elementwise times/rdivide/power left as plain methods (route via *)"),
-    Idiom("classdef", "disp(obj) / display(obj)", "Base.show(io::IO, obj::C)", notes = "io injected; body prints redirected (fprintf -> @printf io, disp -> println(io,…)); integrates with print/string/REPL"),
+    Idiom("classdef", "method function r = m(obj,...)", "function m(obj::C, ...) + forward-decl `function m end` + contract entry m(::Self, ::Any...)::Any"),
+    Idiom("classdef", "operator methods plus/minus/mtimes/eq/lt/uminus/transpose/horzcat/...", "extend Base.:+ / :- / :* / :(==) / :< / unary :- / transpose / hcat ...", notes = "so a+b, a==b, -a, a' dispatch; operator overloads excluded from @contract (not named-interface methods); elementwise times/rdivide/power left as plain methods (route via *)"),
+    Idiom("classdef", "disp(obj) / display(obj)", "Base.show(io::IO, obj::C)", notes = "io injected; body prints redirected (fprintf -> @printf io, disp -> println(io,…)); excluded from @contract; integrates with print/string/REPL"),
     Idiom("classdef", "obj.prop(i) where prop is a property", "obj.prop[i] (index), not prop(obj, i)", notes = "tracked property names distinguish indexed-property access from method calls"),
     Idiom("classdef", "subsref / subsasgn (custom () {} . indexing)", "—", status = :todo, notes = "MATLAB substruct protocol (s.type/s.subs dispatch) not modeled"),
     Idiom("Strings, conversions & maps", "cell content-index c{i} / c{:} / [c{:}] / f(c{:})", "c[i] / splat c... / [c...] / f(c...)", notes = "{} is getindex; c{:} is a comma-separated list -> splat. c{i}(j) after a brace stays a call (computed-callee ambiguity)"),

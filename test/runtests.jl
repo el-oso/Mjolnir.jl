@@ -203,12 +203,28 @@ end
         @test occursin("new{typeof(x), typeof(y)}(x, y)", out)   # direct parametric construction
         @test occursin("function dist(obj::Point)", out) # method dispatches on type
         # struct must precede its methods (otherwise it won't compile)
-        @test findfirst("mutable struct Point", out).start < findfirst("function dist", out).start
+        @test findfirst("mutable struct Point", out).start < findfirst("function dist(obj", out).start
+        # TypeContracts interface idiom: @contract on abstract type, @verify on struct
+        @test occursin("using BaseTypeContracts", out)
+        @test occursin("function dist end", out)           # forward-decl for each contract method
+        @test occursin("function scale end", out)
+        @test occursin("@contract AbstractPoint begin", out)
+        @test occursin("dist(::Self)::Any", out)
+        @test occursin("scale(::Self, ::Any)::Any", out)
+        @test occursin("@verify Point", out)
+        # ordering: abstract type -> forward-decls -> @contract -> struct -> methods -> @verify
+        @test findfirst("abstract type AbstractPoint", out).start <
+            findfirst("function dist end", out).start
+        @test findfirst("@contract AbstractPoint", out).start <
+            findfirst("mutable struct Point", out).start
+        @test findfirst("mutable struct Point", out).start < findfirst("function dist(obj", out).start
+        @test findfirst("function dist(obj", out).start < findfirst("@verify Point", out).start
     end
 
-    @testset "converted class runs in Julia" begin
+    @testset "converted class runs in Julia (with @verify)" begin
         m = Module()
-        Base.include_string(m, convert_matlab(point).julia)
+        Core.eval(m, :(using BaseTypeContracts))
+        Base.include_string(m, convert_matlab(point).julia)   # @verify runs here at load time
         p = Base.invokelatest(getfield(m, :Point), 3, 4)
         @test Base.invokelatest(getfield(m, :dist), p) == 5.0
         q = Base.invokelatest(getfield(m, :scale), p, 2)
@@ -607,7 +623,12 @@ end
             "    function v = at(obj, k)\n      v = obj.data(k);\n    end\n  end\nend\n"
         jl = convert_matlab(src).julia
         @test occursin("return obj.data[k]", jl)   # `v = obj.data[k]; return v` collapses to `return obj.data[k]`
+        # Box has an instance method `at` -> @contract/@verify are emitted
+        @test occursin("@contract AbstractBox begin", jl)
+        @test occursin("at(::Self, ::Any)::Any", jl)
+        @test occursin("@verify Box", jl)
         mod = Module()
+        Core.eval(mod, :(using BaseTypeContracts))
         Base.include_string(mod, jl)
         B = getfield(mod, :Box)
         b = Base.invokelatest(B, [10.0, 20.0, 30.0])

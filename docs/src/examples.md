@@ -117,6 +117,65 @@ The `plus` method became `Base.:+`, so `Vec2(1, 2) + Vec2(3, 4)` works in Julia 
 MATLAB. The struct came out **parametric** (`Vec2{T1, T2}`) so its fields keep their concrete types
 instead of falling back to `Any` — that's Julia's idiom for a fast, type-stable value type.
 
+Classes with named instance methods also get a [TypeContracts](https://github.com/el-oso/TypeContracts.jl)
+interface contract via [BaseTypeContracts](https://github.com/el-oso/BaseTypeContracts.jl):
+
+```matlab
+classdef Point
+  properties
+    x
+    y
+  end
+  methods
+    function obj = Point(x, y)
+      obj.x = x;
+      obj.y = y;
+    end
+    function d = dist(obj)
+      d = sqrt(obj.x^2 + obj.y^2);
+    end
+    function obj = scale(obj, k)
+      obj.x = obj.x * k;
+      obj.y = obj.y * k;
+    end
+  end
+end
+```
+
+becomes
+
+```julia
+using BaseTypeContracts
+
+abstract type AbstractPoint end
+function dist end
+function scale end
+@contract AbstractPoint begin
+    dist(::Self)::Any
+    scale(::Self, ::Any)::Any
+end
+mutable struct Point{T1, T2} <: AbstractPoint
+    x::T1
+    y::T2
+    function Point(x, y)
+        return new{typeof(x), typeof(y)}(x, y)
+    end
+end
+function dist(obj::Point)
+    return sqrt.(obj.x ^ 2 .+ obj.y ^ 2)
+end
+function scale(obj::Point, k)
+    obj.x = obj.x * k
+    obj.y = obj.y * k
+    return obj
+end
+@verify Point
+```
+
+The `@contract` on `AbstractPoint` declares that any subtype must implement `dist` and `scale`.
+The `@verify Point` at the end confirms this at precompile time — a missing method is caught
+immediately, not at runtime.
+
 ## A whole folder → a package
 
 Point [`convert_project`](@ref) at a folder of `.m` files and it builds a ready-to-load Julia
