@@ -79,9 +79,9 @@ for (id, mlab_src, vars, prelude) in all_cases
     end
     mres = matlab_results[id]
 
-    # Check for per-case harness error.
-    if haskey(mres, "__error__")
-        println("  ERROR $id  MATLAB harness: $(mres["__error__"])")
+    # Check for per-case harness error (field name "run_error" in the harness output).
+    if haskey(mres, "run_error")
+        println("  ERROR $id  MATLAB harness: $(mres["run_error"])")
         n_skipped += 1
         continue
     end

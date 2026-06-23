@@ -69,7 +69,7 @@ for ci = 1:n_cases
             end
         end
     catch run_err
-        case_result = setfield(case_result, '__error__', run_err.message);
+        case_result.run_error = run_err.message;
     end
 
     results.(id) = case_result;
