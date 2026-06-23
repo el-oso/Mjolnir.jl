@@ -22,9 +22,10 @@ this is source.
   `ccall`. Octave/MATLAB are used only as out-of-process oracles.
 - **UUIDs via `Pkg`, never hand-written.** Add deps with `Pkg.add` / generate with `Pkg.generate`.
 - **Run `runic -i src/ test/` before every commit.** All `src/*.jl` must be Runic-clean.
-- **Clean-room, MIT.** Normative reference = public MATLAB docs. `tree-sitter-matlab` (MIT,
-  pinned in `deps/build.jl`) is the only vendored grammar. **Octave is never linked and its
-  GPL source is never read** — it is an arm's-length subprocess test oracle only. See `NOTICE`.
+- **Clean-room, MIT.** Normative reference = public MATLAB docs. The MATLAB grammar comes from the
+  `tree_sitter_matlab_jll` artifact (MIT, version-coordinated with `tree_sitter_jll`) — nothing
+  vendored, no build step. **Octave is never linked and its GPL source is never read** — it is an
+  arm's-length subprocess test oracle only. See `NOTICE`.
 
 ## Build & test
 

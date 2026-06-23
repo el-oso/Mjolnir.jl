@@ -23,6 +23,7 @@ makedocs(;
         "User guide" => [
             "Getting started" => "getting_started.md",
             "Examples" => "examples.md",
+            "Troubleshooting" => "troubleshooting.md",
             "Idiom map" => "idioms.md",
         ],
         "Developer" => [

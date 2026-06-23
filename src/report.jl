@@ -66,8 +66,24 @@ function _scrub(text::AbstractString, a::_Anon)
     return out
 end
 
+# Try to load the emitted Julia in a throwaway module and capture an IP-free, scrubbed first line of
+# any error. This is what catches "the output didn't compile" — the syntax gate only checks parsing;
+# this surfaces UndefVarErrors (e.g. an unmapped function), missing imports, struct/method errors, …
+# NOTE: it *executes* the generated top-level code (function/struct defs are harmless; a converted
+# *script* runs its statements), so it is opt-in.
+function _load_status(src::AbstractString, a::_Anon)
+    out = convert_matlab(src).julia
+    try
+        Base.include_string(Module(:MjolnirLoadProbe), out)
+        return Dict{String, Any}("loads" => true)
+    catch e
+        msg = first(split(sprint(showerror, e), '\n'))
+        return Dict{String, Any}("loads" => false, "error" => _scrub(msg, a))
+    end
+end
+
 """
-    conversion_report(src::AbstractString) -> Dict
+    conversion_report(src::AbstractString; check_load=false) -> Dict
 
 Build an **IP-free** report of everything that went wrong converting MATLAB `src`, suitable for
 filing a Mjolnir bug without sharing the source. Conversion is resilient (it does not stop at the
@@ -81,10 +97,13 @@ keywords and recognized builtins are kept verbatim (they are MATLAB's public API
 - `problems` — parse errors and caught lowering exceptions, each with an anonymized `context`
 - `todos` — scrubbed conversion todos (unhandled nodes, unmapped calls, …)
 - `skeleton` — the whole unit as an anonymized node-kind s-expression
+- `load` — *(only with `check_load=true`)* whether the emitted Julia loads, and a scrubbed
+  first-line error if not. **`check_load` executes the generated top-level code** (safe for
+  function/`classdef` files; a converted *script* runs its statements), so it is off by default.
 
 See also [`conversion_report_json`](@ref).
 """
-function conversion_report(src::AbstractString)
+function conversion_report(src::AbstractString; check_load::Bool = false)
     cst = parse_matlab(src)
     ctx = Ctx(
         cst, collect_vars(cst), String[], Set{Symbol}(), collect_classes(cst),
@@ -121,7 +140,7 @@ function conversion_report(src::AbstractString)
         strip(String(take!(io)))
     end
 
-    return Dict(
+    report = Dict{String, Any}(
         "report_version" => 1,
         "reproducer" => reproducer,
         "summary" => Dict(
@@ -136,6 +155,8 @@ function conversion_report(src::AbstractString)
         "todos" => [_scrub(t, a) for t in ctx.todos],
         "skeleton" => skeleton,
     )
+    check_load && (report["load"] = _load_status(src, a))
+    return report
 end
 
 """
@@ -143,7 +164,8 @@ end
 
 [`conversion_report`](@ref) serialized to JSON (IP-free) for sharing.
 """
-conversion_report_json(src::AbstractString) = JSON.json(conversion_report(src))
+conversion_report_json(src::AbstractString; check_load::Bool = false) =
+    JSON.json(conversion_report(src; check_load))
 
 # --- reproducer: un-parse the (anonymized) CST back to synthetic MATLAB ---------------------------
 # Best-effort: covers the common node kinds; identifiers become placeholders, literals become

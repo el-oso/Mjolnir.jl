@@ -101,24 +101,21 @@ becomes
 
 ```julia
 abstract type AbstractVec2 end
-mutable struct Vec2 <: AbstractVec2
-    x
-    y
+mutable struct Vec2{T1, T2} <: AbstractVec2
+    x::T1
+    y::T2
     function Vec2(a, b)
-        obj = new()
-        obj.x = a
-        obj.y = b
-        return obj
+        return new{typeof(a), typeof(b)}(a, b)
     end
 end
 function Base.:+(a::Vec2, b)
-    r = Vec2(a.x .+ b.x, a.y .+ b.y)
-    return r
+    return Vec2(a.x .+ b.x, a.y .+ b.y)
 end
 ```
 
-The `plus` method became `Base.:+`, so `Vec2(1,2) + Vec2(3,4)` works in Julia just like it did in
-MATLAB.
+The `plus` method became `Base.:+`, so `Vec2(1, 2) + Vec2(3, 4)` works in Julia just like it did in
+MATLAB. The struct came out **parametric** (`Vec2{T1, T2}`) so its fields keep their concrete types
+instead of falling back to `Any` — that's Julia's idiom for a fast, type-stable value type.
 
 ## A whole folder → a package
 

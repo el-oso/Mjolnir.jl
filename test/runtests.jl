@@ -465,6 +465,16 @@ end
         @test rep["todos"] == rep2["todos"]   # same anonymized "unmapped function" todo
     end
 
+    @testset "conversion_report check_load captures compile failure (IP-free)" begin
+        ok = conversion_report("function y = f(x)\n  y = x + 1;\nend\n"; check_load = true)
+        @test ok["load"]["loads"] == true
+        bad = conversion_report("z = proprietaryThing(3);\n"; check_load = true)
+        @test bad["load"]["loads"] == false
+        @test occursin("UndefVarError", bad["load"]["error"])
+        @test !occursin("proprietaryThing", bad["load"]["error"])   # scrubbed -> IP-free
+        @test !occursin("\"load\"", conversion_report_json("x = 1;\n"))   # off by default
+    end
+
     @testset "conversion_report/replay over many node kinds" begin
         src = "function out = demo(a, b)\n" *
             "  c = [a, -b; 1, 2];\n" *           # matrix + unary minus

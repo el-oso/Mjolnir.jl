@@ -3,16 +3,13 @@
 
 A source-level MATLAB → idiomatic-Julia converter, written in Julia.
 
-Pipeline (built incrementally): Parse → Resolve → Lower → Idiomatic passes →
-(optional, gated LLM refine) → Emit → Package assembly.
+Pipeline: Parse → Resolve → Lower → Idiomatic passes → (optional, gated LLM refine) →
+Emit → Package assembly. The tree-sitter runtime and MATLAB grammar come from JLL
+artifacts, so there is no build step — `using Mjolnir` works after `Pkg.instantiate`.
 
-This release implements **Stage 1 — Parse**: a tree-sitter front-end (C FFI, no Python)
-that turns MATLAB source into a concrete syntax tree ([`MatlabCST`]).
-
-Run `deps/build.jl` once before using (compiles the MATLAB grammar):
-
-    julia> import Mjolnir
-    julia> include(joinpath(pkgdir(Mjolnir), "deps", "build.jl"))
+Start with [`convert_matlab`](@ref) / [`convert_file`](@ref) / [`convert_project`](@ref).
+When output misbehaves, [`conversion_report`](@ref) builds an IP-free bug report and
+[`audit_project`](@ref) finds functions the source calls but never defines.
 """
 module Mjolnir
 
