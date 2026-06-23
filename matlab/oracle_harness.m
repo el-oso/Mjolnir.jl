@@ -1,4 +1,4 @@
-% oracle_harness.m — MATLAB oracle harness for Mjolnir CI.
+% oracle_harness.m - MATLAB oracle harness for Mjolnir CI.
 %
 % Reads manifest.json from the current working directory, executes each case
 % in a try/catch (so one failure records an error marker instead of aborting),
@@ -24,10 +24,20 @@ fprintf('oracle_harness: %d cases to run\n', n_cases);
 for ci = 1:n_cases
     entry = manifest(ci);
     id    = entry.id;
-    vars  = entry.vars;
-    % class_files is a cell array of filenames (may be empty)
-    if isfield(entry, 'class_files')
+    % vars from jsondecode: cell array for multi-element arrays, char for single string.
+    % Normalize to a cell array of strings.
+    vars = entry.vars;
+    if ischar(vars)
+        vars = {vars};
+    end
+    % class_files is a cell array of filenames (may be empty).
+    % jsondecode returns [] (0x0 double) for an empty JSON array, or a cell array
+    % for a non-empty one. Normalize to a cell array either way.
+    if isfield(entry, 'class_files') && ~isempty(entry.class_files)
         class_files = entry.class_files;
+        if ~iscell(class_files)
+            class_files = num2cell(class_files);
+        end
     else
         class_files = {};
     end
@@ -55,11 +65,11 @@ for ci = 1:n_cases
                 val = eval(vname);
                 case_result.(vname) = val;
             catch harvest_err
-                case_result.(vname) = struct('__harvest_error__', harvest_err.message);
+                case_result.(vname) = ['HARVEST_ERROR: ' harvest_err.message];
             end
         end
     catch run_err
-        case_result.__error__ = run_err.message;
+        case_result = setfield(case_result, '__error__', run_err.message);
     end
 
     results.(id) = case_result;
