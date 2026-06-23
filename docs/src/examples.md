@@ -132,6 +132,34 @@ convert_project("matlab/", "out/"; name = "MyPkg")
 It mirrors your layout — each `.m` file becomes a `.jl` file, and MATLAB `+package` folders become
 Julia sub-modules — and writes a `Project.toml` with the right dependencies filled in.
 
+### Offline or unregistered dependencies
+
+If the generated package needs a package that isn't registered or you're behind a firewall (for
+example [Unmex.jl](https://github.com/el-oso/Unmex.jl) for a compiled MEX), Mjolnir wires it in
+**by path** instead of downloading it. Anything you've already `develop`ed into your current Julia
+environment is picked up automatically; or point at the clones yourself:
+
+```julia
+convert_project("matlab/", "out/"; name = "MyPkg",
+                dev = Dict("Unmex" => "/home/me/clones/Unmex.jl",
+                           "LibMx" => "/home/me/clones/LibMx.jl"))
+```
+
+### Is anything missing?
+
+Scattered projects often call helpers that live in folders you didn't include. Ask Mjolnir what's
+unaccounted for — either with `audit = true` on the conversion, or directly:
+
+```julia
+report = audit_project("matlab/"; searchpaths = ["/home/me/more_matlab"])
+report.unresolved    # functions called but defined nowhere in the tree
+report.suggestions   # name => folder where a matching `.m` was found
+```
+
+Add the suggested folders and convert again. Mjolnir also flags **duplicate function names** (two
+definitions that would silently overwrite each other) as a `todo`/warning, so you can rename or
+namespace them.
+
 ## Reading the result
 
 `convert_matlab` / `convert_file` hand back a [`ConvertResult`](@ref) with three useful fields:

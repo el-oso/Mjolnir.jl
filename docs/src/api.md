@@ -53,6 +53,7 @@ idiom_builtin_gaps
 conversion_report
 conversion_report_json
 replay_report
+audit_project
 ```
 
 ## LLM refinement

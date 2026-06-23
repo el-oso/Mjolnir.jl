@@ -33,6 +33,7 @@ include("assemble.jl")
 include("llm.jl")
 include("idioms.jl")
 include("report.jl")
+include("audit.jl")
 
 export parse_matlab, parse_file, sexpr
 export MatlabCST, CSTNode, nodetext, walk, findkind, children
@@ -40,6 +41,6 @@ export convert_matlab, convert_file, ConvertResult, convert_project
 export LLMBackend, FunctionBackend, ManualBackend, SubprocessBackend, HTTPBackend
 export claude_backend, ollama_backend, refine, gated_refine, verify_equivalent, extract_code
 export Idiom, idioms, idioms_json, idioms_markdown, write_idioms, idiom_builtin_gaps
-export conversion_report, conversion_report_json, replay_report
+export conversion_report, conversion_report_json, replay_report, audit_project
 
 end # module Mjolnir

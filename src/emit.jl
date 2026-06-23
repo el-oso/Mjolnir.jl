@@ -59,6 +59,43 @@ end
 Convert MATLAB source text to Julia. With `modulename`, the output is wrapped in a
 `module`. The result prints as the emitted Julia source.
 """
+# --- duplicate-function guard ------------------------------------------------------------------
+# Two definitions with the same qualified name AND the same argument signature silently overwrite
+# each other in Julia (the last one wins). MATLAB lets such collisions hide across files/subfunctions;
+# we detect them by (name, per-arg-type) so genuine multiple dispatch (e.g. `Base.:+(::A,_)` vs
+# `Base.:+(::B,_)`) is NOT flagged.
+_signame(s::Symbol) = string(s)
+_signame(e::Expr) = e.head === :. ? string(_signame(e.args[1]), ".", _qval(e.args[2])) : string(e)
+_signame(x) = string(x)
+_qval(q::QuoteNode) = string(q.value)
+_qval(x) = string(x)
+
+_argtype(::Symbol) = ""
+function _argtype(a::Expr)
+    a.head === :(::) && return string(a.args[end])
+    a.head === :... && return string(_argtype(a.args[1]), "...")
+    a.head === :kw && return _argtype(a.args[1])
+    return ""
+end
+_argtype(::Any) = ""
+
+function _func_sig(f::Expr)
+    call = f.args[1]
+    (call isa Expr && call.head === :call) || return nothing
+    return (_signame(call.args[1]), String[_argtype(a) for a in call.args[2:end]])
+end
+
+"Names with the same signature defined more than once among `stmts` (top-level function defs)."
+function _duplicate_funcs(stmts)
+    seen = Dict{Tuple{String, Vector{String}}, Int}()
+    for s in stmts
+        (s isa Expr && s.head === :function) || continue
+        sig = _func_sig(s)
+        sig === nothing || (seen[sig] = get(seen, sig, 0) + 1)
+    end
+    return [k for (k, v) in seen if v > 1]
+end
+
 function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = true, wrap_script = true)
     cst = parse_matlab(src)
     ctx = Ctx(
@@ -71,6 +108,10 @@ function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = t
     stmts = lower_unit(ctx)
     stmts = run_semantic(stmts)                       # always-on correctness fixups
     idiomatic && (stmts = run_idiomatic(stmts; wrap_script))
+    for (nm, at) in _duplicate_funcs(stmts)
+        sig = join((isempty(t) ? "_" : "::$t" for t in at), ", ")
+        push!(ctx.todos, "duplicate definition of `$nm($sig)` — a later definition silently overwrites the earlier one")
+    end
     out = _render(stmts, ctx; modulename)
     issue = _validation_issue(out)
     issue === nothing || push!(ctx.todos, issue)

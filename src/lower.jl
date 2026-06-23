@@ -843,10 +843,17 @@ function lower_class(ctx::Ctx, n::CSTNode)
     # Inside classdef bodies, `obj.field = v` is an in-place set on the (mutable) struct.
     ctx.in_method[] = true
     try
-        # struct body: fields + an inner constructor
-        body = Any[f[1] for f in fields]
-        push!(body, ctor === nothing ? _default_ctor(cname, fields) : _lower_ctor(ctx, ctor, cname))
-        push!(out, Expr(:struct, true, Expr(:<:, cname, absname), Expr(:block, body...)))
+        # struct body: typed/parametric when the constructor is simple enough (type-stable, no
+        # implicit `Any` fields); otherwise an untyped struct with the incremental constructor.
+        ctorfn = ctor === nothing ? _default_ctor(cname, fields) : _lower_ctor(ctx, ctor, cname)
+        para = _try_parametric(cname, absname, fields, ctorfn)
+        if para === nothing
+            body = Any[f[1] for f in fields]
+            push!(body, ctorfn)
+            push!(out, Expr(:struct, true, Expr(:<:, cname, absname), Expr(:block, body...)))
+        else
+            push!(out, para)
+        end
 
         # methods as outer functions, dispatching on the concrete type. Track property names so
         # `obj.prop(i)` lowers as indexing (`obj.prop[i]`), not a `prop(obj, i)` method call.
@@ -863,6 +870,46 @@ function lower_class(ctx::Ctx, n::CSTNode)
 end
 
 # MATLAB constructor `function obj = C(args) ... end` -> inner ctor using `new()`.
+_mentions(e, s) = e === s
+_mentions(e::Expr, s) = any(a -> _mentions(a, s), e.args)
+
+# Turn `mutable struct C; x; y; … end` (untyped fields = implicit Any) into a type-stable
+# parametric `mutable struct C{T1,T2,…}; x::T1; … end` — but only when the constructor is the simple
+# pattern `obj = new(); obj.fi = ei; …; return obj` that assigns *every* field exactly once with an
+# expression that doesn't read the half-built object. Then the field exprs go straight into a
+# parametric `new{typeof(e1),…}(e1,…)`. Anything fancier returns `nothing` (caller keeps untyped).
+function _try_parametric(cname::Symbol, absname, fields, ctorfn::Expr)
+    isempty(fields) && return nothing
+    call, blk = ctorfn.args[1], ctorfn.args[2]
+    params = call.args[2:end]
+    stmts = blk.args
+    length(stmts) >= 2 || return nothing
+    (
+        stmts[1] isa Expr && stmts[1].head === :(=) && stmts[1].args[1] isa Symbol &&
+            stmts[1].args[2] == Expr(:call, :new)
+    ) || return nothing
+    obj = stmts[1].args[1]
+    last(stmts) == Expr(:return, obj) || return nothing
+    assigned = Dict{Symbol, Any}()
+    for s in stmts[2:(end - 1)]
+        (
+            s isa Expr && s.head === :(=) && s.args[1] isa Expr && s.args[1].head === :. &&
+                s.args[1].args[1] === obj && s.args[1].args[2] isa QuoteNode
+        ) || return nothing
+        fld = s.args[1].args[2].value
+        (haskey(assigned, fld) || _mentions(s.args[2], obj)) && return nothing
+        assigned[fld] = s.args[2]
+    end
+    fnames = [f[1] for f in fields]
+    Set(keys(assigned)) == Set(fnames) || return nothing      # every field assigned exactly once
+    Tp = [Symbol("T", i) for i in eachindex(fnames)]
+    es = [assigned[f] for f in fnames]
+    fielddefs = [Expr(:(::), fnames[i], Tp[i]) for i in eachindex(fnames)]
+    newc = Expr(:call, Expr(:curly, :new, (Expr(:call, :typeof, e) for e in es)...), es...)
+    pctor = Expr(:function, Expr(:call, cname, params...), Expr(:block, Expr(:return, newc)))
+    return Expr(:struct, true, Expr(:<:, Expr(:curly, cname, Tp...), absname), Expr(:block, fielddefs..., pctor))
+end
+
 function _lower_ctor(ctx::Ctx, fdef::CSTNode, cname::Symbol)
     outnode = _childkind(fdef, :function_output)
     outvar = outnode === nothing ? :obj : _idsym(ctx, _named(outnode)[1])

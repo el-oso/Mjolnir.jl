@@ -197,9 +197,9 @@ end
     @testset "structure of emitted code" begin
         out = convert_matlab(point).julia
         @test occursin("abstract type AbstractPoint", out)
-        @test occursin("mutable struct Point <: AbstractPoint", out)
+        @test occursin("mutable struct Point{T1, T2} <: AbstractPoint", out)   # type-stable parametric struct
         @test occursin("function Point(x, y)", out)     # inner constructor
-        @test occursin("obj = new()", out)
+        @test occursin("new{typeof(x), typeof(y)}(x, y)", out)   # direct parametric construction
         @test occursin("function dist(obj::Point)", out) # method dispatches on type
         # struct must precede its methods (otherwise it won't compile)
         @test findfirst("mutable struct Point", out).start < findfirst("function dist", out).start
@@ -225,9 +225,15 @@ end
 
 @testset "Mjolnir — Stage 4d: cells & structs" begin
     @testset "cell array -> Any[...] and content index" begin
-        out = convert_matlab("c = {1, 2, 3};\nx = c{2};\n"; wrap_script = false).julia
-        @test occursin("Any[1, 2, 3]", out)
+        out = convert_matlab("c = {p, 'a', 3};\nx = c{2};\n"; wrap_script = false).julia
+        @test occursin("Any[p, \"a\", 3]", out)   # heterogeneous cell stays Any[…]
         @test occursin("x = c[2]", out)
+    end
+    @testset "homogeneous cell literal narrows (drops needless Any)" begin
+        @test occursin("c = [1, 2, 3]", convert_matlab("c = {1, 2, 3};\n"; wrap_script = false).julia)
+        # but a cell that is element-assigned keeps Any (heterogeneous by definition)
+        kept = convert_matlab("c = {1, 2, 3};\nc{2} = 'x';\n"; wrap_script = false).julia
+        @test occursin("c = Any[1, 2, 3]", kept)
     end
     @testset "struct(...) -> NamedTuple" begin
         out = convert_matlab("t = struct('a', 1, 'b', 2);\n"; wrap_script = false).julia
@@ -589,7 +595,7 @@ end
             "    function obj = Box(d)\n      obj.data = d;\n    end\n" *
             "    function v = at(obj, k)\n      v = obj.data(k);\n    end\n  end\nend\n"
         jl = convert_matlab(src).julia
-        @test occursin("v = obj.data[k]", jl)
+        @test occursin("return obj.data[k]", jl)   # `v = obj.data[k]; return v` collapses to `return obj.data[k]`
         mod = Module()
         Base.include_string(mod, jl)
         B = getfield(mod, :Box)
@@ -670,7 +676,7 @@ end
 
     @testset "loop -> comprehension (and refusal when cumulative)" begin
         comp = convert_matlab("function y = f(n)\n  y = zeros(1, n);\n  for i = 1:n\n    y(i) = i^2;\n  end\nend\n").julia
-        @test occursin("y = [i ^ 2 for i = 1:n]", comp)
+        @test occursin("[i ^ 2 for i = 1:n]", comp)   # comprehension (and `y = …; return y` collapses to `return …`)
         @test !occursin("for i = 1:n\n", comp) || !occursin("y[i]", comp)   # loop replaced
         cumulative = convert_matlab("s = 0;\nfor i = 1:n\n  s = s + i;\nend\n").julia
         @test occursin("for i = 1:n", cumulative)                            # NOT converted
@@ -741,6 +747,47 @@ end
         @test occursin("Unmex.open_mex(joinpath(@__DIR__, \"fast_op.mexa64\"))", binding)
         @test occursin("Unmex.call(_fast_op_mex", binding)
         @test occursin("fast_op.jl", read(joinpath(pkgdir, "src", "MexPkg.jl"), String))
+    end
+end
+
+@testset "Mjolnir — duplicate function guard" begin
+    r = convert_matlab("function y = foo(x)\n  y = x;\nend\nfunction z = foo(w)\n  z = w + 1;\nend\n")
+    @test any(t -> occursin("duplicate definition of `foo(", t), r.todos)
+    # different arity ⇒ different methods, not a collision
+    r2 = convert_matlab("function y = bar(x)\n  y = x;\nend\nfunction z = bar(a, b)\n  z = a + b;\nend\n")
+    @test !any(t -> occursin("duplicate", t), r2.todos)
+end
+
+@testset "Mjolnir — audit_project (missing-path discovery)" begin
+    mktempdir() do dir
+        src = joinpath(dir, "proj")
+        mkpath(src)
+        write(joinpath(src, "main.m"), "function y = main(x)\n  y = helperFn(x) + localFn(x);\nend\n")
+        write(joinpath(src, "localFn.m"), "function y = localFn(x)\n  y = x + 1;\nend\n")
+        sib = joinpath(dir, "extras")
+        mkpath(sib)
+        write(joinpath(sib, "helperFn.m"), "function y = helperFn(x)\n  y = 2 * x;\nend\n")
+        rep = audit_project(src; searchpaths = [sib])
+        @test :helperFn in rep.unresolved        # called, defined nowhere in src
+        @test !(:localFn in rep.unresolved)       # defined locally
+        @test get(rep.suggestions, :helperFn, "") == sib   # found on the search path
+    end
+end
+
+@testset "Mjolnir — convert_project develops offline deps (dev=)" begin
+    import Pkg
+    mktempdir() do dir
+        unmex = joinpath(dir, "Unmex")           # a stand-in for the unregistered, offline package
+        Pkg.generate(unmex)
+        src = joinpath(dir, "matlab")
+        mkpath(src)
+        write(joinpath(src, "plain.m"), "function y = p(x)\n  y = x + 1;\nend\n")
+        write(joinpath(src, "fast.mexa64"), "dummy")     # emits an Unmex binding -> needs Unmex
+        out = joinpath(dir, "out")
+        mkpath(out)
+        pkgdir = convert_project(src, out; name = "MexDev", dev = Dict("Unmex" => unmex))
+        man = read(joinpath(pkgdir, "Manifest.toml"), String)
+        @test occursin("Unmex", man) && occursin("path =", man)   # tracked by path, no registry/network
     end
 end
 

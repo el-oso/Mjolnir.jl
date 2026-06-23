@@ -76,11 +76,23 @@ Public API: `convert_matlab(src; modulename, idiomatic=true, wrap_script=true)`,
 - **Scripts vs functions**: a script with a top-level loop is wrapped in `let … end` (Julia
   soft-scope errors otherwise). Definitions (abstract/struct/function) are hoisted ahead of
   script statements, in order (a struct MUST precede its methods).
-- **classdef** → `abstract type AbstractC [<: AbstractSuper]` + `mutable struct C <: AbstractC`;
-  constructor → inner ctor via `new()`; methods → outer `f(obj::C, …)`. `Ctx.in_method` is set
-  while lowering class bodies so `obj.field = v` is an in-place set; **outside** classdef the same
-  syntax builds a **NamedTuple** (`s = (a=1,)` then `merge(s, (b=2,))`) — MATLAB structs are
-  Dict-like but we deliberately prefer Julia structs/NamedTuples, **not `Dict`**.
+- **classdef** → `abstract type AbstractC [<: AbstractSuper]` + a `mutable struct`. When the ctor
+  is the simple "assign every field once" pattern, `_try_parametric` (lower.jl) emits a **type-stable
+  parametric** struct `C{T1,…} <: AbstractC; f1::T1; …` with a direct `new{typeof(e1),…}(…)`;
+  otherwise it falls back to an untyped `mutable struct C` with the incremental `obj = new()` ctor.
+  Methods → outer `f(obj::C, …)` (`obj::C` matches any `C{…}`); operator methods extend `Base.:+`
+  etc.; `disp`/`display` → `Base.show`. `Ctx.in_method` makes `obj.field = v` an in-place set;
+  **outside** classdef the same syntax builds a **NamedTuple** — we prefer structs/NamedTuples, **not `Dict`**.
+- **Idiomatic passes (idiomatic.jl):** `out = expr; return out` collapses to `return expr`
+  (`_collapse_return`); homogeneous cell literals narrow `Any[1,2,3]`→`[1,2,3]` (`_narrow_cells`,
+  but kept `Any[]` if the var is element-assigned or heterogeneous).
+- **Duplicate-function guard:** `emit.jl` `_duplicate_funcs` flags defs sharing a (qualified name,
+  arg-type signature) — they'd silently overwrite — as a todo; `convert_project` also warns per
+  module scope (`_warn_duplicate_funcs`). Genuine multiple dispatch (distinct arg types) isn't flagged.
+- **convert_project deps & audit:** deps are wired by **path** when `develop`ed in the active env or
+  given via `dev=Dict(name=>path)` (offline/unregistered like Unmex/LibMx), else `Pkg.add` (uuid-
+  pinned). `audit_project(srcdir; searchpaths)` / `audit=true` reports called-but-undefined functions
+  (likely in folders not yet added).
 - **Single-line `;`-separated control flow** (`for …; …; end`) makes the grammar emit an ERROR
   node → flagged via `ConvertResult.has_error`. Use newlines.
 - **CRLF line endings are normalized** in `parse_matlab` (`\r\n`/`\r` → `\n`). Windows-authored

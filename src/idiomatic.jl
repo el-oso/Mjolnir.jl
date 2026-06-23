@@ -338,11 +338,27 @@ end
 # Orchestration
 # ---------------------------------------------------------------------------------------
 
+# Collapse the MATLAB-ism `out = expr; return out` (single trailing assignment immediately returned)
+# into `return expr`. Safe: `expr` is evaluated and returned either way, and we keep every earlier
+# statement, so an accumulator (`s = 0; for …; s = s + …; end; return s`) — whose last assignment is
+# inside the loop, not right before the return — is left untouched.
+function _collapse_return(f::Expr)
+    body = f.args[2]
+    (body isa Expr && body.head === :block && length(body.args) >= 2) || return f
+    last, pen = body.args[end], body.args[end - 1]
+    if last isa Expr && last.head === :return && length(last.args) == 1 && last.args[1] isa Symbol &&
+            pen isa Expr && pen.head === :(=) && pen.args[1] === last.args[1]
+        newargs = Any[body.args[1:(end - 2)]...; Expr(:return, pen.args[2])]
+        return Expr(:function, f.args[1], Expr(:block, newargs...))
+    end
+    return f
+end
+
 function _process_function(f::Expr)
     sig, body = f.args[1], f.args[2]
     env = shape_env(body.args)
     newbody = Expr(:block, map(s -> _rewrite(s, env), body.args)...)
-    return Expr(:function, sig, newbody)
+    return _collapse_return(Expr(:function, sig, newbody))
 end
 
 # A `mutable struct` may carry inner constructors; de-broadcast those like any function.
@@ -440,6 +456,38 @@ Apply the deterministic idiomatic passes to lowered top-level statements. Defini
 their relative order (so a struct precedes its methods); a loop-bearing script body is then
 wrapped in `let ... end` when `wrap_script` is set.
 """
+# Narrow a homogeneous cell literal `Any[1, 2, 3]` to a plain typed array `[1, 2, 3]` (drops the
+# needless `Any`). Conservative: only when every element is a literal of one kind (all numbers or
+# all strings), and never when the cell is bound to a variable that is element-assigned somewhere
+# (e.g. `c{2} = 'x'`) — cells are heterogeneous by definition, so correctness wins.
+_homog(es) = !isempty(es) && (all(e -> e isa Number, es) || all(e -> e isa AbstractString, es))
+_iscelllit(e) = e isa Expr && e.head === :ref && e.args[1] === :Any && length(e.args) >= 2
+
+function _narrow_cells(stmts)
+    mutated = Set{Symbol}()
+    collect_mut(e) = begin
+        if e isa Expr
+            if e.head === :(=) && e.args[1] isa Expr && e.args[1].head === :ref && e.args[1].args[1] isa Symbol
+                push!(mutated, e.args[1].args[1])
+            end
+            foreach(collect_mut, e.args)
+        end
+    end
+    foreach(collect_mut, stmts)
+
+    narrow(e) = e
+    narrow(e::Expr) = begin
+        if e.head === :(=) && e.args[1] isa Symbol && e.args[1] in mutated && _iscelllit(e.args[2])
+            Expr(:(=), e.args[1], Expr(:ref, :Any, map(narrow, e.args[2].args[2:end])...))   # keep cell
+        elseif _iscelllit(e) && _homog(@view e.args[2:end])
+            Expr(:vect, map(narrow, @view e.args[2:end])...)
+        else
+            Expr(e.head, map(narrow, e.args)...)
+        end
+    end
+    return map(narrow, stmts)
+end
+
 function run_idiomatic(stmts; wrap_script::Bool = true)
     stmts = _comprehensions(stmts)        # recognize preallocated loops -> comprehensions first
     defs = Any[]
@@ -452,5 +500,5 @@ function run_idiomatic(stmts; wrap_script::Bool = true)
     if wrap_script && _has_loop(script)
         script = Any[Expr(:let, Expr(:block), Expr(:block, _scope_fix(script)...))]
     end
-    return vcat(defs, script)
+    return _narrow_cells(vcat(defs, script))
 end
