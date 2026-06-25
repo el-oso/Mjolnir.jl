@@ -96,7 +96,7 @@ end
 Convert MATLAB source text to Julia. With `modulename`, the output is wrapped in a
 `module`. The result prints as the emitted Julia source.
 """
-function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = true, wrap_script = true)
+function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = true, wrap_script = true, backend = nothing)
     cst = parse_matlab(src)
     ctx = Ctx(
         cst, collect_vars(cst), String[], Set{Symbol}(), collect_classes(cst),
@@ -115,6 +115,13 @@ function convert_matlab(src::AbstractString; modulename = nothing, idiomatic = t
     out = _render(stmts, ctx; modulename)
     issue = _validation_issue(out)
     issue === nothing || push!(ctx.todos, issue)
+    if backend !== nothing
+        out = try
+            refine(backend, out)
+        catch
+            out
+        end
+    end
     return ConvertResult(out, sort!(collect(ctx.imports)), ctx.todos, cst.has_error)
 end
 
