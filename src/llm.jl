@@ -82,7 +82,7 @@ claude_backend(;
 
 "Local Ollama server (OpenAI-compatible chat endpoint)."
 ollama_backend(;
-    model = "julia-expert-v3", url = "http://localhost:11434/v1/chat/completions",
+    model = "julia-expert-v5", url = "http://localhost:11434/v1/chat/completions",
     api_key = "", max_tokens = 4096
 ) =
     HTTPBackend(url, model, api_key, :openai, max_tokens)
