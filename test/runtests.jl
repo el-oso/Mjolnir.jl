@@ -885,6 +885,20 @@ end
         bad = FunctionBackend(_ -> "```julia\nsq(x) = x + 1\n```")
         @test !gated_refine(bad, conv; probes = ["sq(3)", "sq(4)"]).accepted
     end
+
+    @testset "auto_probes" begin
+        @test !isempty(auto_probes("function sq(x)\n  x^2\nend"))
+        @test all(startswith(p, "sq(") for p in auto_probes("function sq(x)\n  x^2\nend"))
+        @test !isempty(auto_probes("f(x, y) = x + y"))
+        @test all(startswith(p, "f(") for p in auto_probes("f(x, y) = x + y"))
+        @test isempty(auto_probes("function s(v::Vector{Int})\n  sum(v)\nend"))
+        @test "greet()" in auto_probes("greet() = \"hello\"")
+        @test "C" in auto_probes("const C = 3.14")
+        @test isempty(auto_probes("not valid julia }{}{"))
+        baseline = "function sq(x)\n    y = x ^ 2\n    return y\nend"
+        @test  gated_refine(FunctionBackend(_ -> "```julia\nsq(x) = x^2\n```"), baseline; probes = auto_probes(baseline)).accepted
+        @test !gated_refine(FunctionBackend(_ -> "```julia\nsq(x) = x^3\n```"), baseline; probes = auto_probes(baseline)).accepted
+    end
 end
 
 @testset "Mjolnir — differential_report (pluggable oracle + IP-free report)" begin
